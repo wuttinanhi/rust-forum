@@ -1,0 +1,40 @@
+// @generated automatically by Diesel CLI.
+
+diesel::table! {
+    comments (id) {
+        id -> Int4,
+        content -> Text,
+        post_id -> Int4,
+    }
+}
+
+diesel::table! {
+    posts (id) {
+        id -> Int4,
+        title -> Varchar,
+        body -> Text,
+        published -> Bool,
+    }
+}
+
+diesel::table! {
+    users (id) {
+        id -> Int4,
+        #[max_length = 255]
+        name -> Varchar,
+        #[max_length = 255]
+        email -> Varchar,
+        #[max_length = 255]
+        password -> Varchar,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::joinable!(comments -> posts (post_id));
+
+diesel::allow_tables_to_appear_in_same_query!(
+    comments,
+    posts,
+    users,
+);

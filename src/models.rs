@@ -1,0 +1,57 @@
+use diesel::prelude::*;
+
+use crate::schema::*;
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = posts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Post {
+    pub id: i32,
+    pub title: String,
+    pub body: String,
+    pub published: bool,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = posts)]
+pub struct NewPost<'a> {
+    pub title: &'a str,
+    pub body: &'a str,
+    pub published: bool,
+}
+
+#[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
+#[diesel(belongs_to(Post))]
+#[diesel(table_name= comments)]
+pub struct Comment {
+    pub id: i32,
+    pub content: String,
+    pub post_id: i32,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name=comments)]
+pub struct NewComment<'a> {
+    pub post_id: &'a i32,
+    pub content: &'a str,
+}
+
+#[derive(Queryable, Selectable, Debug, PartialEq)]
+#[diesel(table_name = users)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct User {
+    pub id: i32,
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub created_at: chrono::NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name=users)]
+pub struct NewUser<'a> {
+    pub name: &'a str,
+    pub email: &'a str,
+    pub password: &'a str,
+}

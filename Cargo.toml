@@ -1,9 +1,23 @@
 [package]
 name = "rust-forum"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
 actix-web = "4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+diesel = { version = "2.2.0", features = ["postgres", "chrono", "r2d2"] }
+dotenvy = "0.15"
+handlebars = { version = "6.2.0", features = ["dir_source"] }
+chrono = "0.4.39"
+env_logger = "0.11.5"
+bcrypt = "0.16.0"
+
+# [[bin]]
+# name = "src/main.rs"
+# path = "src/main.rs"
+# doc = false
+
+# [lib]
+# doc = false
