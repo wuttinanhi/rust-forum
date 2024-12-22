@@ -1,4 +1,5 @@
-use actix_web::{web, App, HttpServer};
+use actix_session::{storage::CookieSessionStore, SessionMiddleware};
+use actix_web::{cookie::Key, web, App, HttpServer};
 
 use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::{
@@ -20,6 +21,9 @@ async fn main() -> std::io::Result<()> {
     println!("listening at http://{}:{}", host, port);
 
     HttpServer::new(|| {
+        // get mode from env
+        // let app_mode = std::env::var("ENV").unwrap_or("dev".to_string());
+
         // let db = initialize_db_pool();
         let db = establish_connection();
         let db_ref = web::Data::new(db);
@@ -35,6 +39,18 @@ async fn main() -> std::io::Result<()> {
             .unwrap();
         let handlebars_ref = web::Data::new(handlebars);
 
+        // --- cookie session middleware ---
+        let cookie_key = Key::generate();
+
+        let cookie_secure = std::env::var("COOKIE_SECURE")
+            .map(|val| val == "true")
+            .unwrap_or(false);
+
+        let cookie_session_middleware =
+            SessionMiddleware::builder(CookieSessionStore::default(), cookie_key)
+                .cookie_secure(cookie_secure)
+                .build();
+
         let users_scope = web::scope("/users")
             .service(users_login)
             .service(users_login_post)
@@ -44,10 +60,9 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(db_ref)
             .app_data(handlebars_ref)
+            .wrap(cookie_session_middleware)
             .service(users_scope)
             .service(index)
-        // .service(echo)
-        // .route("/hey", web::get().to(hey))
     })
     .bind((host, port))?
     .run()

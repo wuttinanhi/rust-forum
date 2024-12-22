@@ -13,6 +13,7 @@ handlebars = { version = "6.2.0", features = ["dir_source"] }
 chrono = "0.4.39"
 env_logger = "0.11.5"
 bcrypt = "0.16.0"
+actix-session = { version = "0.10.1", features = ["cookie-session"] }
 
 # [[bin]]
 # name = "src/main.rs"
