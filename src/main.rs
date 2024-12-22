@@ -6,13 +6,13 @@ use rust_forum::{
     establish_connection,
     routes::{
         index::index,
-        users::{users_login, users_login_post, users_register, users_register_post},
+        users::{users_login, users_login_post, users_logout, users_register, users_register_post},
     },
 };
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "debug");
+    std::env::set_var("RUST_LOG", "info");
     env_logger::init();
 
     let host = "127.0.0.1";
@@ -40,22 +40,28 @@ async fn main() -> std::io::Result<()> {
         let handlebars_ref = web::Data::new(handlebars);
 
         // --- cookie session middleware ---
-        let cookie_key = Key::generate();
+        let cookie_key = Key::from(
+            // must be 64 bytes long
+            "dev-cookie-key-1234567890-dev-cookie-key-1234567890-dev-cookie-key-1234567890"
+                .as_bytes(),
+        );
 
         let cookie_secure = std::env::var("COOKIE_SECURE")
             .map(|val| val == "true")
             .unwrap_or(false);
 
-        let cookie_session_middleware =
-            SessionMiddleware::builder(CookieSessionStore::default(), cookie_key)
-                .cookie_secure(cookie_secure)
-                .build();
+        let cookie_store = CookieSessionStore::default();
+
+        let cookie_session_middleware = SessionMiddleware::builder(cookie_store, cookie_key)
+            .cookie_secure(cookie_secure)
+            .build();
 
         let users_scope = web::scope("/users")
             .service(users_login)
             .service(users_login_post)
             .service(users_register)
-            .service(users_register_post);
+            .service(users_register_post)
+            .service(users_logout);
 
         App::new()
             .app_data(db_ref)

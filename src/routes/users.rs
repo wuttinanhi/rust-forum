@@ -1,8 +1,9 @@
+use actix_session::Session;
 use actix_web::{
     get,
     http::header,
     post,
-    web::{self},
+    web::{self, Redirect},
     HttpResponse, Responder,
 };
 
@@ -14,16 +15,29 @@ use crate::{
     db::map_diesel_error_to_message,
     establish_connection,
     users::crud::{create_user, login_user},
+    utils::flash::set_flash_message,
 };
 
 #[get("/login")]
-pub async fn users_login(hb: web::Data<Handlebars<'_>>) -> impl Responder {
+pub async fn users_login(
+    hb: web::Data<Handlebars<'_>>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    if session.get::<i32>("user_id")?.is_some() {
+        set_flash_message(&session, "error", "User already logged in!")?;
+
+        return Ok(HttpResponse::Found()
+            .insert_header((header::LOCATION, "/"))
+            .finish());
+    }
+
     let data = json!({
         "parent": "users/base"
     });
+
     let body = hb.render("users/login", &data).unwrap();
 
-    web::Html::new(body)
+    Ok(HttpResponse::Ok().body(body))
 }
 
 #[derive(Deserialize)]
@@ -35,15 +49,20 @@ struct UserLoginFormData {
 #[post("/login")]
 pub async fn users_login_post(
     form: web::Form<UserLoginFormData>,
+    session: Session,
     hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
     let conn = &mut establish_connection();
-    let user = login_user(conn, &form.email, &form.password);
+    let user_result = login_user(conn, &form.email, &form.password);
 
-    match user {
-        Ok(_) => Ok(HttpResponse::Found()
-            .insert_header((header::LOCATION, "/"))
-            .finish()),
+    match user_result {
+        Ok(user) => {
+            session.insert("user_id", user.id)?;
+
+            Ok(HttpResponse::Found()
+                .insert_header((header::LOCATION, "/"))
+                .finish())
+        }
 
         Err(_) => {
             let data = json!({
@@ -59,13 +78,25 @@ pub async fn users_login_post(
 }
 
 #[get("/register")]
-pub async fn users_register(hb: web::Data<Handlebars<'_>>) -> impl Responder {
+pub async fn users_register(
+    hb: web::Data<Handlebars<'_>>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    if session.get::<i32>("user_id")?.is_some() {
+        set_flash_message(&session, "error", "User already logged in!")?;
+
+        return Ok(HttpResponse::Found()
+            .insert_header((header::LOCATION, "/"))
+            .finish());
+    }
+
     let data = json!({
         "parent": "users/base"
     });
+
     let body = hb.render("users/register", &data).unwrap();
 
-    web::Html::new(body)
+    Ok(HttpResponse::Ok().body(body))
 }
 
 #[derive(Deserialize)]
@@ -99,4 +130,14 @@ pub async fn users_register_post(
     let body = hb.render("users/register", &result).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
+}
+
+#[get("/logout")]
+pub async fn users_logout(session: Session) -> actix_web::Result<impl Responder> {
+    // clear session
+    session.clear();
+
+    set_flash_message(&session, "success", "Logout Successfully!")?;
+
+    Ok(Redirect::to("/"))
 }

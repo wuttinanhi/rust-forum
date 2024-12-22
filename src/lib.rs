@@ -7,6 +7,7 @@ pub mod comments;
 pub mod posts;
 pub mod users;
 pub mod db;
+pub mod utils;
 
 use diesel::{Connection, PgConnection};
 use dotenvy::dotenv;
