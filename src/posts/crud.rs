@@ -1,8 +1,7 @@
 use crate::models::{NewPost, Post};
-use crate::schema::posts as post_schema;
+use crate::schema::posts as schema_posts;
 use crate::schema::posts::dsl::*;
-use diesel::prelude::*;
-use diesel::{prelude::PgConnection, RunQueryDsl, SelectableHelper};
+use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 
 pub fn create_post(
     conn: &mut PgConnection,
@@ -17,7 +16,7 @@ pub fn create_post(
         user_id: *post_user_id,
     };
 
-    diesel::insert_into(post_schema::table)
+    diesel::insert_into(schema_posts::table)
         .values(&new_post)
         .returning(Post::as_returning())
         .get_result(conn)
@@ -54,8 +53,6 @@ pub fn update_post(
 }
 
 pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> bool {
-    use crate::schema::posts::dsl::*;
-
     diesel::update(posts.find(post_id))
         .set(deleted_at.eq(diesel::dsl::now))
         .execute(conn)
