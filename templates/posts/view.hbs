@@ -1,5 +1,6 @@
 {{#*inline "page"}}
 
+{{ #if post }}
 <div class="row mt-5">
   <div class="col"></div>
   <div class="col-6">
@@ -64,6 +65,7 @@
   </div>
   <div class="col"></div>
 </div>
+{{/if}}
 
 {{/inline}}
 {{> (lookup this "parent")}}
