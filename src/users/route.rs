@@ -14,7 +14,11 @@ use serde_json::json;
 use crate::{
     db::map_diesel_error_to_message,
     establish_connection,
-    users::crud::{create_user, login_user},
+    users::{
+        constants::SESSION_KEY_USER,
+        crud::{create_user, login_user},
+        types::{user_to_user_session, SessionUser},
+    },
     utils::flash::set_flash_message,
 };
 
@@ -23,7 +27,7 @@ pub async fn users_login(
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    if session.get::<i32>("user_id")?.is_some() {
+    if session.get::<SessionUser>(SESSION_KEY_USER)?.is_some() {
         set_flash_message(&session, "error", "User already logged in!")?;
 
         return Ok(HttpResponse::Found()
@@ -57,7 +61,9 @@ pub async fn users_login_post(
 
     match user_result {
         Ok(user) => {
-            session.insert("user_id", user.id)?;
+            let user_session = user_to_user_session(&user);
+
+            session.insert(SESSION_KEY_USER, user_session)?;
 
             Ok(HttpResponse::Found()
                 .insert_header((header::LOCATION, "/"))
@@ -82,7 +88,7 @@ pub async fn users_register(
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    if session.get::<i32>("user_id")?.is_some() {
+    if session.get::<SessionUser>(SESSION_KEY_USER)?.is_some() {
         set_flash_message(&session, "error", "User already logged in!")?;
 
         return Ok(HttpResponse::Found()

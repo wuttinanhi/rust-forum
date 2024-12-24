@@ -4,9 +4,9 @@ use actix_web::{cookie::Key, web, App, HttpServer};
 use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::{
     establish_connection,
-    routes::{
-        index::index,
-        users::{users_login, users_login_post, users_logout, users_register, users_register_post},
+    routes::index::index,
+    users::route::{
+        users_login, users_login_post, users_logout, users_register, users_register_post,
     },
 };
 

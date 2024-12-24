@@ -4,9 +4,9 @@ pub mod schema;
 pub mod routes;
 
 pub mod comments;
+pub mod db;
 pub mod posts;
 pub mod users;
-pub mod db;
 pub mod utils;
 
 use diesel::{Connection, PgConnection};

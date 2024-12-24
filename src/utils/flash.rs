@@ -9,19 +9,15 @@ pub fn handle_flash_message(data: &mut Value, session: &Session) {
 fn handle_session_flash_internal(data: &mut Value, session: &Session, session_key: String) {
     let session_flash_success = session.remove_as::<String>(&session_key);
 
-    match session_flash_success {
-        Some(result) => match result {
-            Ok(success_message) => {
-                data.as_object_mut()
-                    .unwrap()
-                    .insert(session_key, json!(success_message));
-            }
-            // unable to deserialize session value
-            Err(_json_raw) => (),
-        },
-        // no key present
-        None => (),
-    }
+    if let Some(result) = session_flash_success { match result {
+        Ok(success_message) => {
+            data.as_object_mut()
+                .unwrap()
+                .insert(session_key, json!(success_message));
+        }
+        // unable to deserialize session value
+        Err(_json_raw) => (),
+    } }
 }
 
 pub fn set_flash_message(

@@ -1,10 +1,18 @@
 {{#*inline "page"}}
-<a href="users/register">Register</a>
 
+{{ #if user }}
+Welcome: {{user.name}}
+<br>
+
+<a href="users/logout">Logout</a>
+{{else}}
+Welcome
+<br>
+
+<a href="users/register">Register</a>
 <br>
 <a href="users/login">Login</a>
+{{/if}}
 
-<br>
-<a href="users/logout">Logout</a>
 {{/inline}}
 {{> (lookup this "parent")}}
