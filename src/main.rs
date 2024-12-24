@@ -7,6 +7,7 @@ use actix_web::{
 
 use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::{
+    comments::routes::create_comment_submit_route,
     establish_connection,
     posts::route::{create_post_route, create_post_submit_route, view_post_route},
     routes::index::index,
@@ -73,12 +74,15 @@ async fn main() -> std::io::Result<()> {
             .service(create_post_submit_route)
             .service(view_post_route);
 
+        let comments_scope = web::scope("/comments").service(create_comment_submit_route);
+
         App::new()
             .app_data(db_ref)
             .app_data(handlebars_ref)
             .wrap(cookie_session_middleware)
             .service(users_scope)
             .service(posts_scope)
+            .service(comments_scope)
             .service(index)
     })
     .bind((host, port))?
