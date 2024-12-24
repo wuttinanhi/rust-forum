@@ -1,31 +1,36 @@
 {{#*inline "page"}}
-<form class="form-signin" method="post" action="./register">
-  <h1 class="h3 mb-3 font-weight-normal">Register</h1>
 
+<div class="row mt-5">
+  <div class="col"></div>
+  <div class="col-6">
+    <form class="form-signin" method="post" action="./register">
+      <h1 class="h3 mb-3 font-weight-normal">Register</h1>
 
-  <label for="inputName" class="sr-only">Full Name</label>
-  <input name="name" type="text" id="inputName" class="form-control" placeholder="Full Name" required autofocus />
+      <label for="inputName" class="sr-only">Full Name</label>
+      <input name="name" type="text" id="inputName" class="form-control" placeholder="Full Name" required autofocus />
 
-  <label for="inputEmail" class="sr-only">Email address</label>
-  <input name="email" type="email" id="inputEmail" class="form-control" placeholder="Email address" required />
+      <label for="inputEmail" class="sr-only">Email address</label>
+      <input name="email" type="email" id="inputEmail" class="form-control" placeholder="Email address" required />
 
-  <label for="inputPassword" class="sr-only">Password</label>
-  <input name="password" type="password" id="inputPassword" class="form-control" placeholder="Password" required />
+      <label for="inputPassword" class="sr-only">Password</label>
+      <input name="password" type="password" id="inputPassword" class="form-control" placeholder="Password" required />
 
-  <div class="checkbox mb-3">
-    <label>
-      <input type="checkbox" value="agree-terms" required />
-      I agree to the terms and conditions
-    </label>
+      <div class="checkbox mb-3">
+        <label>
+          <input type="checkbox" value="agree-terms" required />
+          I agree to the terms and conditions
+        </label>
+      </div>
+
+      <button class="btn btn-lg btn-primary btn-block" type="submit">
+        Register
+      </button>
+    </form>
+
+    <a href="login">Login</a>
   </div>
+  <div class="col"></div>
+</div>
 
-  <button class="btn btn-lg btn-primary btn-block" type="submit">
-    Register
-  </button>
-
-  {{! <p class="mt-5 mb-3 text-muted">&copy; 2017-2018</p> }}
-</form>
-
-<a href="login">Login</a>
 {{/inline}}
 {{> (lookup this "parent")}}

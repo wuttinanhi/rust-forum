@@ -1,0 +1,32 @@
+{{#*inline "page"}}
+
+<div class="row mt-5">
+  <div class="col"></div>
+  <div class="col-6">
+    <form class="form-signin" method="post" action="create">
+      <h1 class="h3 mb-3 font-weight-normal">Create new Post</h1>
+
+      <label for="post_title" class="sr-only">Post title</label>
+      <input name="title" type="text" id="post_title" class="form-control" placeholder="Post title" required
+        autofocus />
+
+      <div class="form-floating my-2">
+        <textarea name="body" class="form-control" placeholder="post body" id="post_body"
+          style="height: 10em"></textarea>
+        <label for="post_body">Body</label>
+      </div>
+
+      <button class="btn btn-lg btn-primary btn-block" type="submit">
+        Post
+      </button>
+    </form>
+
+    <div class="mt-5">
+      <a href="/">Back</a>
+    </div>
+  </div>
+  <div class="col"></div>
+</div>
+
+{{/inline}}
+{{> (lookup this "parent")}}

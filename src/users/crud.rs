@@ -1,9 +1,8 @@
-use bcrypt::{hash, verify, DEFAULT_COST};
-use diesel::{prelude::PgConnection, RunQueryDsl, SelectableHelper};
-use diesel::{ExpressionMethods, QueryDsl};
-
+use super::types::UserPublic;
 use crate::models::{NewUser, User};
-use crate::schema::users;
+use crate::schema::users as schema_users;
+use bcrypt::{hash, verify, DEFAULT_COST};
+use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 
 pub fn create_user(
     conn: &mut PgConnection,
@@ -19,7 +18,7 @@ pub fn create_user(
         password: &hashed,
     };
 
-    diesel::insert_into(users::table)
+    diesel::insert_into(schema_users::table)
         .values(&new_user)
         .returning(User::as_returning())
         .get_result(conn)
@@ -44,4 +43,19 @@ pub fn login_user(
     } else {
         Err(diesel::result::Error::NotFound) // Return NotFound for incorrect passwords
     }
+}
+
+pub fn get_user(conn: &mut PgConnection, target_user_id: i32) -> Option<User> {
+    use crate::schema::users::dsl::*;
+    users.filter(id.eq(target_user_id)).first(conn).ok()
+}
+
+pub fn get_user_sanitized(conn: &mut PgConnection, target_user_id: i32) -> Option<UserPublic> {
+    let non_sanitized_user = get_user(conn, target_user_id)?;
+
+    Some(UserPublic {
+        id: non_sanitized_user.id,
+        name: non_sanitized_user.name,
+        created_at: non_sanitized_user.created_at,
+    })
 }

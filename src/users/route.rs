@@ -36,7 +36,7 @@ pub async fn users_login(
     }
 
     let data = json!({
-        "parent": "users/base"
+        "parent": "base"
     });
 
     let body = hb.render("users/login", &data).unwrap();
@@ -72,7 +72,7 @@ pub async fn users_login_post(
 
         Err(_) => {
             let data = json!({
-                "parent": "users/base",
+                "parent": "base",
                 "error": "Error login"
             });
 
@@ -97,7 +97,7 @@ pub async fn users_register(
     }
 
     let data = json!({
-        "parent": "users/base"
+        "parent": "base"
     });
 
     let body = hb.render("users/register", &data).unwrap();
@@ -115,25 +115,29 @@ struct UserRegisterFormData {
 #[post("/register")]
 pub async fn users_register_post(
     form: web::Form<UserRegisterFormData>,
+    session: Session,
     hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
     let conn = &mut establish_connection();
 
-    let result = create_user(conn, &form.name, &form.email, &form.password)
-        .map(|_| {
-            json!({
-               "parent": "users/base",
-               "success": "Created user"
-            })
-        })
-        .unwrap_or_else(|e| {
-            json!({
-                "parent": "users/base",
-                "error": format!("Error create user: {}", map_diesel_error_to_message(e))
-            })
-        });
+    let result = create_user(conn, &form.name, &form.email, &form.password);
 
-    let body = hb.render("users/register", &result).unwrap();
+    if result.is_ok() {
+        set_flash_message(&session, "success", "Created user")?;
+
+        return Ok(HttpResponse::Found()
+            .insert_header((header::LOCATION, "/"))
+            .finish());
+    }
+
+    let hb_data = json!({
+        "parent": "base",
+        "error": format!(
+            "Error create user: {}", map_diesel_error_to_message(result.unwrap_err())
+        )
+    });
+
+    let body = hb.render("users/register", &hb_data).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
 }

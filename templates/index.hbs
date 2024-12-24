@@ -1,18 +1,24 @@
 {{#*inline "page"}}
 
-{{ #if user }}
-Welcome: {{user.name}}
-<br>
+<div class="row mt-5">
+    <div class="col"></div>
+    <div class="col-6">
+        {{ #if user }}
+        Welcome: {{user.name}}
+        <br>
 
-<a href="users/logout">Logout</a>
-{{else}}
-Welcome
-<br>
+        <a href="users/logout">Logout</a>
+        {{else}}
+        Welcome
+        <br>
 
-<a href="users/register">Register</a>
-<br>
-<a href="users/login">Login</a>
-{{/if}}
+        <a href="users/register">Register</a>
+        <br>
+        <a href="users/login">Login</a>
+        {{/if}}
+    </div>
+    <div class="col"></div>
+</div>
 
 {{/inline}}
 {{> (lookup this "parent")}}

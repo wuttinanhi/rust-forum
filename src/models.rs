@@ -1,7 +1,10 @@
 use crate::schema::*;
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Selectable, Identifiable, Debug, PartialEq, AsChangeset)]
+#[derive(
+    Queryable, Selectable, Identifiable, Debug, PartialEq, AsChangeset, Serialize, Deserialize,
+)]
 #[diesel(table_name = posts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Post {
@@ -46,7 +49,9 @@ pub struct NewComment<'a> {
     pub user_id: i32,
 }
 
-#[derive(Queryable, Selectable, Debug, PartialEq)]
+#[derive(
+    Queryable, Selectable, Identifiable, Debug, PartialEq, AsChangeset, Serialize, Deserialize,
+)]
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {

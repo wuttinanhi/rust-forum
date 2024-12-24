@@ -1,0 +1,41 @@
+{{#*inline "page"}}
+
+<div class="row mt-5">
+  <div class="col"></div>
+  <div class="col-6">
+
+    <h1>{{post.title}}</h1>
+
+    <div class="card bg-light my-5">
+      {{!-- <div class="card-header">Header</div> --}}
+      <div class="card-body">
+        <p>
+          {{post.body}}
+        </p>
+      </div>
+      <div class="card-footer">
+        Posted by: {{post_user.name}}
+      </div>
+    </div>
+
+    <form class="form-signin" method="post" action="/comments/create">
+      <h1 class="h3 mb-3 font-weight-normal">Comment</h1>
+
+      <div class="form-floating my-2">
+        <textarea name="body" class="form-control" placeholder="New comment" id="comment_body"
+          style="height: 10em"></textarea>
+        <label for="comment_body"></label>
+      </div>
+
+      <button class="btn btn-lg btn-primary btn-block" type="submit">
+        Comment
+      </button>
+    </form>
+
+
+  </div>
+  <div class="col"></div>
+</div>
+
+{{/inline}}
+{{> (lookup this "parent")}}
