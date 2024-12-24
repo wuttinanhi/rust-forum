@@ -15,7 +15,7 @@ fn main() {
     println!("\nOk! Let's write {title} (Press {EOF} when finished)\n",);
     stdin().read_to_string(&mut body).unwrap();
 
-    let post = create_post(connection, title, &body);
+    let post = create_post(connection, &1, title, &body);
     println!("\nPost saved {title} with id #{}", post.id);
 }
 

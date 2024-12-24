@@ -15,7 +15,7 @@ fn main() {
     println!("\ncontent?\n",);
     stdin().read_to_string(&mut content_input).unwrap();
 
-    let comment = create_comment(connection, &post_id, &content_input);
+    let comment = create_comment(connection, &1, &post_id, &content_input);
     println!("\nSaved id #{}", comment.id);
 }
 

@@ -1,8 +1,7 @@
+use crate::schema::*;
 use diesel::prelude::*;
 
-use crate::schema::*;
-
-#[derive(Queryable, Selectable)]
+#[derive(Queryable, Selectable, Identifiable, Debug, PartialEq, AsChangeset)]
 #[diesel(table_name = posts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Post {
@@ -10,6 +9,10 @@ pub struct Post {
     pub title: String,
     pub body: String,
     pub published: bool,
+    pub user_id: i32,
+    pub created_at: chrono::NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
+    pub deleted_at: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Insertable)]
@@ -18,22 +21,29 @@ pub struct NewPost<'a> {
     pub title: &'a str,
     pub body: &'a str,
     pub published: bool,
+    pub user_id: i32,
 }
 
 #[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
 #[diesel(belongs_to(Post))]
-#[diesel(table_name= comments)]
+#[diesel(table_name = comments)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Comment {
     pub id: i32,
     pub content: String,
     pub post_id: i32,
+    pub user_id: i32,
+    pub created_at: chrono::NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
+    pub deleted_at: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Insertable)]
-#[diesel(table_name=comments)]
+#[diesel(table_name = comments)]
 pub struct NewComment<'a> {
-    pub post_id: &'a i32,
     pub content: &'a str,
+    pub post_id: i32,
+    pub user_id: i32,
 }
 
 #[derive(Queryable, Selectable, Debug, PartialEq)]
