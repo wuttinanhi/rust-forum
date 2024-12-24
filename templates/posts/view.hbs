@@ -14,9 +14,35 @@
         </p>
       </div>
       <div class="card-footer">
-        Posted by: {{post_user.name}}
+        <a href="/posts/{{post.id}}">
+          #{{post.id}}
+        </a>
+
+        Posted by: {{post_user.name}} at {{post.created_at}}
       </div>
     </div>
+
+    <div id="comments" class="my-3">
+      <h5 class="text-secondary">Comments:</h5>
+
+      {{#each comments}}
+      <div class="card my-3" id="{{this.comment.id}}">
+        <div class="card-body">
+          <p>{{this.comment.content}}</p>
+        </div>
+
+        <div class="card-footer">
+          <a href="/posts/{{this.comment.post_id}}#{{this.comment.id}}">
+            #{{this.comment.id}}
+          </a>
+
+          Comment by: {{this.user.name}} at {{this.comment.created_at}}
+        </div>
+      </div>
+      {{/each}}
+    </div>
+
+    <hr class="mt-5 my-3">
 
     <form class="form-signin" method="post" action="/comments/create">
       <h1 class="h3 mb-3 font-weight-normal">Comment</h1>

@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
+    comments::crud::list_comments_with_user,
     establish_connection,
     users::crud::get_user_sanitized,
     utils::{
@@ -85,11 +86,19 @@ pub async fn view_post_route(
         Some(post) => {
             let post_user = get_user_sanitized(conn, post.user_id);
 
-            update_handlebars_data(&mut data, "post", serde_json::to_value(post).unwrap());
+            update_handlebars_data(&mut data, "post", serde_json::to_value(&post).unwrap());
             update_handlebars_data(
                 &mut data,
                 "post_user",
                 serde_json::to_value(post_user).unwrap(),
+            );
+
+            let comments = list_comments_with_user(conn, &post.id);
+
+            update_handlebars_data(
+                &mut data,
+                "comments",
+                serde_json::to_value(&comments).unwrap(),
             );
         }
         None => set_flash_message(&session, "error", "Post not found!")?,

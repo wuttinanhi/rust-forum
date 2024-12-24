@@ -1,8 +1,10 @@
-use crate::models::{Comment, NewComment};
+use crate::models::{Comment, NewComment, User};
 use crate::schema::comments as schema_comments;
 use crate::schema::comments::dsl::*;
-use crate::schema::comments::post_id;
+use crate::schema::users::dsl::*;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
+
+use super::types::CommentWithUser;
 
 pub fn create_comment(
     conn: &mut PgConnection,
@@ -28,6 +30,8 @@ pub fn get_comment(conn: &mut PgConnection, comment_id: &i32) -> Option<Comment>
 }
 
 pub fn list_comments(conn: &mut PgConnection, parent_post_id: &i32) -> Vec<Comment> {
+    use crate::schema::comments::dsl::*;
+
     comments
         .filter(post_id.eq(parent_post_id))
         .order(created_at.desc())
@@ -52,4 +56,22 @@ pub fn delete_post(conn: &mut PgConnection, target_post_id: i32) -> bool {
         .set(deleted_at.eq(diesel::dsl::now))
         .execute(conn)
         .is_ok()
+}
+
+pub fn list_comments_with_user(
+    conn: &mut PgConnection,
+    parent_post_id: &i32,
+) -> Vec<CommentWithUser> {
+    use crate::schema::comments::dsl::*;
+
+    comments
+        .inner_join(users)
+        .filter(post_id.eq(parent_post_id))
+        .order(created_at.asc())
+        .select((Comment::as_select(), User::as_select()))
+        .load::<(Comment, User)>(conn)
+        .expect("Error loading comments")
+        .into_iter()
+        .map(|(comment, user)| CommentWithUser { comment, user })
+        .collect()
 }

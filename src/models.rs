@@ -27,7 +27,9 @@ pub struct NewPost<'a> {
     pub user_id: i32,
 }
 
-#[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
+#[derive(
+    Queryable, Selectable, Identifiable, Associations, Debug, Eq, PartialEq, Serialize, Deserialize,
+)]
 #[diesel(belongs_to(Post))]
 #[diesel(table_name = comments)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -50,7 +52,7 @@ pub struct NewComment<'a> {
 }
 
 #[derive(
-    Queryable, Selectable, Identifiable, Debug, PartialEq, AsChangeset, Serialize, Deserialize,
+    Queryable, Selectable, Identifiable, Debug, Eq, PartialEq, AsChangeset, Serialize, Deserialize,
 )]
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
