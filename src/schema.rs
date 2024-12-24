@@ -5,6 +5,10 @@ diesel::table! {
         id -> Int4,
         content -> Text,
         post_id -> Int4,
+        user_id -> Int4,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        deleted_at -> Nullable<Timestamp>,
     }
 }
 
@@ -14,6 +18,10 @@ diesel::table! {
         title -> Varchar,
         body -> Text,
         published -> Bool,
+        user_id -> Int4,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        deleted_at -> Nullable<Timestamp>,
     }
 }
 
@@ -32,5 +40,11 @@ diesel::table! {
 }
 
 diesel::joinable!(comments -> posts (post_id));
+diesel::joinable!(comments -> users (user_id));
+diesel::joinable!(posts -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(comments, posts, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    comments,
+    posts,
+    users,
+);
