@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-use super::crud::{create_post, get_post};
+use super::crud::{create_post, get_post, list_post_with_user};
 
 #[get("/create")]
 pub async fn create_post_route(
@@ -109,5 +109,26 @@ pub async fn view_post_route(
 
     let body = hb.render("posts/view", &data).unwrap();
 
+    Ok(HttpResponse::Ok().body(body))
+}
+
+#[get("/")]
+pub async fn index_list_posts_route(
+    hb: web::Data<Handlebars<'_>>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    let conn = &mut establish_connection();
+
+    let mut data = json!({
+        "parent": "base",
+    });
+
+    let posts = list_post_with_user(conn);
+    update_handlebars_data(&mut data, "posts", serde_json::to_value(&posts).unwrap());
+
+    handle_session_user(&session, &mut data);
+    handle_flash_message(&mut data, &session);
+
+    let body = hb.render("posts/index", &data).unwrap();
     Ok(HttpResponse::Ok().body(body))
 }

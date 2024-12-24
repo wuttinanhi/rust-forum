@@ -5,12 +5,14 @@ use actix_web::{
     App, HttpServer,
 };
 
+use actix_web::HttpResponse;
 use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::{
     comments::routes::create_comment_submit_route,
     establish_connection,
-    posts::route::{create_post_route, create_post_submit_route, view_post_route},
-    routes::index::index,
+    posts::route::{
+        create_post_route, create_post_submit_route, index_list_posts_route, view_post_route,
+    },
     users::route::{
         users_login, users_login_post, users_logout, users_register, users_register_post,
     },
@@ -72,7 +74,16 @@ async fn main() -> std::io::Result<()> {
         let posts_scope = web::scope("/posts")
             .service(create_post_route)
             .service(create_post_submit_route)
-            .service(view_post_route);
+            .service(view_post_route)
+            .service(index_list_posts_route)
+            .route(
+                "/posts",
+                web::get().to(|| async {
+                    HttpResponse::PermanentRedirect()
+                        .append_header(("Location", "/posts/"))
+                        .finish()
+                }),
+            );
 
         let comments_scope = web::scope("/comments").service(create_comment_submit_route);
 
@@ -83,7 +94,7 @@ async fn main() -> std::io::Result<()> {
             .service(users_scope)
             .service(posts_scope)
             .service(comments_scope)
-            .service(index)
+            .service(index_list_posts_route)
     })
     .bind((host, port))?
     .run()

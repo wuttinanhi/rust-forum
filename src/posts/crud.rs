@@ -1,7 +1,9 @@
-use crate::models::{NewPost, Post};
+use crate::models::{NewPost, Post, User};
 use crate::schema::posts as schema_posts;
 use crate::schema::posts::dsl::*;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
+
+use super::types::PostWithUser;
 
 pub fn create_post(
     conn: &mut PgConnection,
@@ -57,4 +59,19 @@ pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> bool {
         .set(deleted_at.eq(diesel::dsl::now))
         .execute(conn)
         .is_ok()
+}
+
+pub fn list_post_with_user(conn: &mut PgConnection) -> Vec<PostWithUser> {
+    use crate::schema::posts::dsl::{created_at, posts};
+    use crate::schema::users::dsl::*;
+
+    posts
+        .inner_join(users)
+        .order(created_at.desc())
+        .select((Post::as_select(), User::as_select()))
+        .load::<(Post, User)>(conn)
+        .expect("Error loading posts")
+        .into_iter()
+        .map(|(post, user)| PostWithUser { post, user })
+        .collect()
 }
