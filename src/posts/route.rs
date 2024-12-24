@@ -18,6 +18,7 @@ use crate::{
         flash::{handle_flash_message, set_flash_message},
         handlebars_helper::update_handlebars_data,
         session::handle_session_user,
+        users::get_session_user,
     },
 };
 
@@ -51,10 +52,12 @@ pub async fn create_post_submit_route(
     form: web::Form<CreatePostFormData>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
+    let user = get_session_user(&session)?;
     let conn = &mut establish_connection();
-    let create_post_resultx = create_post(conn, &1, &form.title, &form.body);
 
-    let new_post_url = format!("/posts/{}", create_post_resultx.id);
+    let create_post_result = create_post(conn, &user.id, &form.title, &form.body);
+
+    let new_post_url = format!("/posts/{}", create_post_result.id);
 
     set_flash_message(&session, "success", "Created post!")?;
 
