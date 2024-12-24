@@ -5,7 +5,8 @@ use actix_web::{
     App, HttpServer,
 };
 
-use actix_web::HttpResponse;
+use actix_web::middleware::NormalizePath;
+use actix_web::middleware::TrailingSlash;
 use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::{
     comments::routes::create_comment_submit_route,
@@ -75,21 +76,14 @@ async fn main() -> std::io::Result<()> {
             .service(create_post_route)
             .service(create_post_submit_route)
             .service(view_post_route)
-            .service(index_list_posts_route)
-            .route(
-                "/posts",
-                web::get().to(|| async {
-                    HttpResponse::PermanentRedirect()
-                        .append_header(("Location", "/posts/"))
-                        .finish()
-                }),
-            );
+            .service(index_list_posts_route);
 
         let comments_scope = web::scope("/comments").service(create_comment_submit_route);
 
         App::new()
             .app_data(db_ref)
             .app_data(handlebars_ref)
+            // .wrap(NormalizePath::new(TrailingSlash::Always))
             .wrap(cookie_session_middleware)
             .service(users_scope)
             .service(posts_scope)
