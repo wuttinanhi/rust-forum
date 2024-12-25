@@ -4,6 +4,8 @@ volumes:
 services:
   rustforum:
     image: rustforum
+    depends_on:
+      - db
     build:
       context: .
       dockerfile: Dockerfile
