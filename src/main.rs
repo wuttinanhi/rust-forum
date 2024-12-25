@@ -1,12 +1,13 @@
+use actix_session::config::PersistentSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
+use actix_web::cookie::time::Duration;
+// use actix_web::middleware::NormalizePath;
+// use actix_web::middleware::TrailingSlash;
 use actix_web::{
     cookie::Key,
     web::{self},
     App, HttpServer,
 };
-
-use actix_web::middleware::NormalizePath;
-use actix_web::middleware::TrailingSlash;
 use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::{
     comments::routes::create_comment_submit_route,
@@ -24,29 +25,35 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "info");
     env_logger::init();
 
-    let host = "127.0.0.1";
-    let port = 3000;
+    let host = std::env::var("APP_HOST").unwrap_or("0.0.0.0".to_string());
 
-    println!("listening at http://{}:{}", host, port);
+    let port = std::env::var("APP_PORT")
+        .unwrap_or("3000".to_string())
+        .parse()
+        .unwrap_or(3000);
 
-    HttpServer::new(|| {
-        // get mode from env
-        // let app_mode = std::env::var("ENV").unwrap_or("dev".to_string());
+    println!("listening at {}:{}", host, port);
 
-        // let db = initialize_db_pool();
+    // get mode from env
+    // let app_mode = std::env::var("ENV").unwrap_or("dev".to_string());
+    // let db = initialize_db_pool();
+
+    let mut handlebars_options = DirectorySourceOptions::default();
+    handlebars_options.tpl_extension = ".hbs".to_owned();
+    handlebars_options.hidden = false;
+    handlebars_options.temporary = false;
+
+    let mut handlebars = Handlebars::new();
+    handlebars
+        .register_templates_directory("templates", handlebars_options)
+        .unwrap();
+    let handlebars_ref = web::Data::new(handlebars);
+
+    // let pool = config.pg.create_pool(None, NoTls).unwrap();
+
+    HttpServer::new(move || {
         let db = establish_connection();
         let db_ref = web::Data::new(db);
-
-        let mut handlebars_options = DirectorySourceOptions::default();
-        handlebars_options.tpl_extension = ".hbs".to_owned();
-        handlebars_options.hidden = false;
-        handlebars_options.temporary = false;
-
-        let mut handlebars = Handlebars::new();
-        handlebars
-            .register_templates_directory("./templates", handlebars_options)
-            .unwrap();
-        let handlebars_ref = web::Data::new(handlebars);
 
         // --- cookie session middleware ---
         let cookie_key = Key::from(
@@ -63,8 +70,10 @@ async fn main() -> std::io::Result<()> {
 
         let cookie_session_middleware = SessionMiddleware::builder(cookie_store, cookie_key)
             .cookie_secure(cookie_secure)
+            .session_lifecycle(PersistentSession::default().session_ttl(Duration::days(7)))
             .build();
 
+        // --- routes ---
         let users_scope = web::scope("/users")
             .service(users_login)
             .service(users_login_post)
@@ -80,9 +89,10 @@ async fn main() -> std::io::Result<()> {
 
         let comments_scope = web::scope("/comments").service(create_comment_submit_route);
 
+        // --- init app ---
         App::new()
-            .app_data(db_ref)
-            .app_data(handlebars_ref)
+            .app_data(db_ref.clone())
+            .app_data(handlebars_ref.clone())
             // .wrap(NormalizePath::new(TrailingSlash::Always))
             .wrap(cookie_session_middleware)
             .service(users_scope)

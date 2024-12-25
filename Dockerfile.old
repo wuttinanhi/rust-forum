@@ -1,0 +1,50 @@
+#FROM rust:1 as build-env
+##RUN apt install -y libpq-dev
+#
+## Install dependencies needed for compiling with GCC and static linking
+#RUN apt update && apt install -y \
+#    build-essential \
+#    libpq-dev \
+#    clang \
+#    pkg-config \
+#    gcc \
+#    libc6-dev
+#
+#WORKDIR /app
+#COPY . /app
+#
+## RUN cargo build --release
+#RUN CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=gcc cargo build --release
+#
+#FROM gcr.io/distroless/cc-debian12
+##COPY --from=build-env /usr/lib/x86_64-linux-gnu/libpq.so.5 /usr/lib/x86_64-linux-gnu/
+#COPY --from=build-env /app/target/release/rustforum /
+#CMD ["./rustforum"]
+
+# Use the Rust image with musl for static linking
+FROM rust:1 as build-env
+
+# Install dependencies required for compiling with musl and libpq
+RUN apt update && apt install -y \
+    musl-tools \
+    libpq-dev \
+    clang \
+    pkg-config
+
+# Set up the environment for static linking (musl)
+RUN rustup target add x86_64-unknown-linux-musl
+
+WORKDIR /app
+COPY . /app
+
+# Build the project with musl for static linking
+RUN cargo build --release --target x86_64-unknown-linux-musl
+
+# Use a minimal runtime image (e.g., distroless)
+FROM gcr.io/distroless/cc-debian12
+
+# Copy the statically linked binary from the build stage
+COPY --from=build-env /app/target/x86_64-unknown-linux-musl/release/rustforum /
+
+# Set the entrypoint for the container
+CMD ["/rustforum"]
