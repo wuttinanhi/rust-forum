@@ -1,7 +1,9 @@
 use super::types::UserPublic;
+use crate::db::DbError;
 use crate::models::{NewUser, User};
 use crate::schema::users as schema_users;
 use bcrypt::{hash, verify, DEFAULT_COST};
+use diesel::result::Error;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 
 pub fn create_user(
@@ -9,27 +11,28 @@ pub fn create_user(
     name: &str,
     email: &str,
     password: &str,
-) -> Result<User, diesel::result::Error> {
+) -> Result<User, DbError> {
     let hashed = hash(password, DEFAULT_COST).unwrap();
 
-    let new_user = NewUser {
+    let new_user_data = NewUser {
         email,
         name,
         password: &hashed,
     };
 
-    diesel::insert_into(schema_users::table)
-        .values(&new_user)
+    let new_user = diesel::insert_into(schema_users::table)
+        .values(&new_user_data)
         .returning(User::as_returning())
-        .get_result(conn)
-    // .expect("Error saving new user")
+        .get_result(conn)?;
+
+    Ok(new_user)
 }
 
 pub fn login_user(
     conn: &mut PgConnection,
     user_email: &str,
     user_password: &str,
-) -> Result<User, diesel::result::Error> {
+) -> Result<User, DbError> {
     use crate::schema::users::dsl::*;
 
     // Query the user by email
@@ -39,9 +42,11 @@ pub fn login_user(
 
     // Verify the password (you would replace this with actual hashing logic)
     if valid {
-        Ok(user) // Return the user if passwords match
+        // Return the user if passwords match
+        Ok(user)
     } else {
-        Err(diesel::result::Error::NotFound) // Return NotFound for incorrect passwords
+        // Otherwise, return an error
+        Err(Box::new(Error::NotFound))
     }
 }
 

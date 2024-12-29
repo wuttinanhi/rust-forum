@@ -15,8 +15,12 @@ fn main() {
     println!("\ncontent?\n",);
     stdin().read_to_string(&mut content_input).unwrap();
 
-    let comment = create_comment(connection, &1, &post_id, &content_input);
-    println!("\nSaved id #{}", comment.id);
+    let comment_result = create_comment(connection, &1, &post_id, &content_input);
+
+    match comment_result {
+        Ok(comment) => println!("\nSaved comment id #{}", comment.id),
+        Err(e) => println!("failed to save comment: {}", e),
+    }
 }
 
 #[cfg(not(windows))]

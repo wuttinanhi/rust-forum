@@ -15,8 +15,12 @@ fn main() {
     println!("\nOk! Let's write {title} (Press {EOF} when finished)\n",);
     stdin().read_to_string(&mut body).unwrap();
 
-    let post = create_post(connection, &1, title, &body);
-    println!("\nPost saved {title} with id #{}", post.id);
+    let post_result = create_post(connection, &1, title, &body);
+
+    match post_result {
+        Ok(post) => println!("\nSaved post id #{}", post.id),
+        Err(e) => println!("failed to save post: {}", e),
+    }
 }
 
 #[cfg(not(windows))]

@@ -1,1 +1,1 @@
-cargo watch -x 'run --bin rust-forum'
+cargo watch -x 'run --bin rustforum'
