@@ -14,10 +14,11 @@ chrono = { version = "0.4.39", features = ["serde"] }
 env_logger = "0.11.5"
 bcrypt = "0.16.0"
 actix-session = { version = "0.10.1", features = ["cookie-session"] }
+actix-cors = "0.7.0"
 
- [[bin]]
- name = "rustforum"
- path = "src/main.rs"
+[[bin]]
+name = "rustforum"
+path = "src/main.rs"
 # doc = false
 
 # [lib]
