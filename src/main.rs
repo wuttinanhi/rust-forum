@@ -1,10 +1,9 @@
 use actix_cors::Cors;
+use actix_limitation::{Limiter, RateLimiter};
 use actix_session::config::PersistentSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
-use actix_web::cookie::time::Duration;
+use actix_web::dev::ServiceRequest;
 use actix_web::http;
-// use actix_web::middleware::NormalizePath;
-// use actix_web::middleware::TrailingSlash;
 use actix_web::{
     cookie::Key,
     web::{self},
@@ -23,10 +22,16 @@ use rust_forum::{
     },
 };
 
+// use actix_web::middleware::NormalizePath;
+// use actix_web::middleware::TrailingSlash;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "info");
     env_logger::init();
+
+    // get mode from env
+    // let app_mode = std::env::var("ENV").unwrap_or("dev".to_string());
 
     let host = std::env::var("APP_HOST").unwrap_or("0.0.0.0".to_string());
 
@@ -35,18 +40,34 @@ async fn main() -> std::io::Result<()> {
         .parse()
         .unwrap_or(3000);
 
-    let cors_origins = std::env::var("APP_CORS_ORIGINS")
-        .unwrap_or("http://localhost:3000,http://127.0.0.1:3000".to_string());
+    println!("listening at http://{}:{}", host, port);
 
     // --- database setup ---
     let db_pool = initialize_db_pool();
 
-    println!("listening at http://{}:{}", host, port);
+    // CORS
+    let cors_origins = std::env::var("APP_CORS_ORIGINS")
+        .unwrap_or("http://localhost:3000,http://127.0.0.1:3000".to_string());
+
     println!("APP_CORS_ORIGINS: {:?}", &cors_origins);
 
+    let cors_origins_split: Vec<String> = cors_origins.split(',').map(|s| s.to_string()).collect();
+
+    // RATE LIMIT
+    let ratelimit_redis_host = std::env::var("REDIS_HOST").unwrap_or("127.0.0.1".to_string());
+    let ratelimit_redis_password = std::env::var("REDIS_PASSWORD").unwrap_or("".to_string());
+    let mut ratelimit_redis_url = format!("redis://{ratelimit_redis_host}");
+
+    if !ratelimit_redis_password.is_empty() {
+        ratelimit_redis_url = format!("redis://:{ratelimit_redis_password}@{ratelimit_redis_host}");
+    }
+
+    println!("ratelimit_redis_url: {:?}", &ratelimit_redis_url);
+
     HttpServer::new(move || {
-        // get mode from env
-        // let app_mode = std::env::var("ENV").unwrap_or("dev".to_string());
+        let ratelimit_redis_url = ratelimit_redis_url.clone();
+
+        let cors_origins_split = cors_origins_split.clone();
 
         // let db = initialize_db_pool();
         let db_ref = web::Data::new(db_pool.clone());
@@ -84,12 +105,20 @@ async fn main() -> std::io::Result<()> {
 
         let cookie_session_middleware = SessionMiddleware::builder(cookie_store, cookie_key)
             .cookie_secure(cookie_secure)
-            .session_lifecycle(PersistentSession::default().session_ttl(Duration::days(7)))
+            .session_lifecycle(
+                PersistentSession::default()
+                    .session_ttl(actix_web::cookie::time::Duration::days(7)),
+            )
             .build();
 
         // -- setup CORS ---
+
         let cors_middleware = Cors::default()
-            .allowed_origin(&cors_origins)
+            .allowed_origin_fn(move |origin, _req_head| {
+                cors_origins_split
+                    .iter()
+                    .any(|allowed_origin| allowed_origin == origin)
+            })
             .allowed_methods(vec!["GET", "POST"])
             .allowed_headers(vec![
                 http::header::CONTENT_TYPE,
@@ -97,6 +126,26 @@ async fn main() -> std::io::Result<()> {
                 http::header::ACCEPT,
             ])
             .max_age(3600);
+
+        // -- setup rate limiter --
+
+        let limiter = web::Data::new(
+            Limiter::builder(ratelimit_redis_url)
+                .key_by(|req: &ServiceRequest| {
+                    // let cookie_value = req
+                    //     .get_session()
+                    //     .get(&"session-id")
+                    //     .unwrap_or_else(|_| req.cookie(&"rate-api-id").map(|c| c.to_string()));
+
+                    let ip_address = req.peer_addr().map(|addr| addr.ip().to_string());
+
+                    return ip_address;
+                })
+                .limit(5000)
+                .period(std::time::Duration::from_secs(3600)) // 60 minutes
+                .build()
+                .unwrap(),
+        );
 
         // --- setup routes ---
         let users_scope = web::scope("/users")
@@ -118,6 +167,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(db_ref.clone())
             .app_data(handlebars_ref.clone())
+            .wrap(RateLimiter::default())
+            .app_data(limiter.clone())
             // .wrap(NormalizePath::new(TrailingSlash::Always))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
@@ -127,6 +178,7 @@ async fn main() -> std::io::Result<()> {
             .service(index_list_posts_route)
     })
     .bind((host, port))?
+    // .workers(1)
     .run()
     .await
 }
