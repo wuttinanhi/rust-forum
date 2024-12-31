@@ -50,17 +50,23 @@ pub fn login_user(
     }
 }
 
-pub fn get_user(conn: &mut PgConnection, target_user_id: i32) -> Option<User> {
+pub fn get_user(conn: &mut PgConnection, target_user_id: i32) -> Result<User, DbError> {
     use crate::schema::users::dsl::*;
-    users.filter(id.eq(target_user_id)).first(conn).ok()
+    let user = users.filter(id.eq(target_user_id)).first(conn)?;
+    Ok(user)
 }
 
-pub fn get_user_sanitized(conn: &mut PgConnection, target_user_id: i32) -> Option<UserPublic> {
+pub fn get_user_sanitized(
+    conn: &mut PgConnection,
+    target_user_id: i32,
+) -> Result<UserPublic, DbError> {
     let non_sanitized_user = get_user(conn, target_user_id)?;
 
-    Some(UserPublic {
+    let user_public = UserPublic {
         id: non_sanitized_user.id,
         name: non_sanitized_user.name,
         created_at: non_sanitized_user.created_at,
-    })
+    };
+
+    Ok(user_public)
 }

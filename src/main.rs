@@ -137,9 +137,7 @@ async fn main() -> std::io::Result<()> {
                     //     .get(&"session-id")
                     //     .unwrap_or_else(|_| req.cookie(&"rate-api-id").map(|c| c.to_string()));
 
-                    let ip_address = req.peer_addr().map(|addr| addr.ip().to_string());
-
-                    return ip_address;
+                    req.peer_addr().map(|addr| addr.ip().to_string())
                 })
                 .limit(5000)
                 .period(std::time::Duration::from_secs(3600)) // 60 minutes

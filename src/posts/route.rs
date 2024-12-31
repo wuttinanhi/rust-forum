@@ -80,15 +80,13 @@ pub async fn view_post_route(
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     let post_id = path.into_inner();
+    let mut hb_data = json!({ "parent": "base" });
 
-    let mut data = json!({
-        "parent": "base",
-    });
-
-    let post_data = web::block(move || {
+    // Combine database operations into single block
+    let page_data = web::block(move || {
         let mut conn = pool.get()?;
         let post = get_post(&mut conn, post_id)?;
-        let author = get_user_sanitized(&mut conn, post.user_id).ok_or(diesel::NotFound)?;
+        let author = get_user_sanitized(&mut conn, post.user_id)?;
         let comments = list_comments_with_user(&mut conn, &post.id)?;
 
         Ok::<PostPageData, DbError>(PostPageData {
@@ -99,34 +97,27 @@ pub async fn view_post_route(
     })
     .await?;
 
-    match post_data {
-        Ok(post_data) => {
-            update_handlebars_data(
-                &mut data,
-                "post",
-                serde_json::to_value(&post_data.post).unwrap(),
-            );
-            update_handlebars_data(
-                &mut data,
-                "post_user",
-                serde_json::to_value(post_data.author).unwrap(),
-            );
-
-            update_handlebars_data(
-                &mut data,
-                "comments",
-                serde_json::to_value(&post_data.comments).unwrap(),
-            );
+    match page_data {
+        Ok(page_data) => {
+            update_handlebars_data(&mut hb_data, "post", json!(page_data.post));
+            update_handlebars_data(&mut hb_data, "post_user", json!(page_data.author));
+            update_handlebars_data(&mut hb_data, "comments", json!(page_data.comments));
         }
-        Err(_) => {
-            set_flash_message(&session, "error", "failed to get post")?;
+        Err(e) => {
+            let error_msg = format!("Failed to get post: {}", e);
+            set_flash_message(&session, "error", &error_msg)?;
+            return Ok(HttpResponse::Found()
+                .append_header(("Location", "/"))
+                .finish());
         }
     }
 
-    handle_session_user(&session, &mut data);
-    handle_flash_message(&mut data, &session);
+    handle_session_user(&session, &mut hb_data);
+    handle_flash_message(&mut hb_data, &session);
 
-    let body = hb.render("posts/view", &data).unwrap();
+    let body = hb
+        .render("posts/view", &hb_data)
+        .map_err(actix_web::error::ErrorInternalServerError)?;
 
     Ok(HttpResponse::Ok().body(body))
 }
