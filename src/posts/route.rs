@@ -122,7 +122,7 @@ pub async fn view_post_route(
     Ok(HttpResponse::Ok().body(body))
 }
 
-#[get("/")]
+// #[get("/")]
 pub async fn index_list_posts_route(
     pool: web::Data<DbPool>,
     hb: web::Data<Handlebars<'_>>,

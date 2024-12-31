@@ -165,7 +165,7 @@ async fn main() -> std::io::Result<()> {
             .service(create_post_route)
             .service(create_post_submit_route)
             .service(view_post_route)
-            .service(index_list_posts_route);
+            .route("", web::to(index_list_posts_route));
 
         let comments_scope = web::scope("/comments").service(create_comment_submit_route);
 
@@ -182,7 +182,7 @@ async fn main() -> std::io::Result<()> {
             .service(users_scope)
             .service(posts_scope)
             .service(comments_scope)
-            .service(index_list_posts_route)
+            .route("/", web::to(index_list_posts_route))
     })
     .bind((host, port))?
     // .workers(1)
