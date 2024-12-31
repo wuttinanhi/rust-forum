@@ -1,6 +1,6 @@
 use actix_session::Session;
 use actix_web::{
-    get, post,
+    error, get, post,
     web::{self, Redirect},
     HttpResponse, Responder,
 };
@@ -13,16 +13,21 @@ use crate::{
     users::{
         constants::SESSION_KEY_USER,
         crud::{
-            change_user_password, create_user, get_user_by_id, login_user, validate_user_password,
+            create_user, get_user_by_id, get_user_sanitized, login_user, update_user_data,
+            update_user_password, validate_user_password,
         },
-        dto::{UserChangePasswordFormData, UserLoginFormData, UserRegisterFormData},
+        dto::{
+            UserChangePasswordFormData, UserLoginFormData, UserRegisterFormData, UserUpdateFormData,
+        },
         types::{user_to_user_session, SessionUser},
     },
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
+        handlebars_helper::update_handlebars_data,
         http::create_redirect,
         users::get_session_user,
     },
+    validate_input_user_name, validate_input_user_password,
 };
 
 #[get("/login")]
@@ -52,6 +57,8 @@ pub async fn users_login_post_route(
     session: Session,
     hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
+    validate_input_user_password!(&form.password);
+
     // use web::block to offload blocking Diesel queries without blocking server thread
     let user_result = web::block(move || {
         // note that obtaining a connection from the pool is also potentially blocking
@@ -116,6 +123,9 @@ pub async fn users_register_post_route(
         "parent": "base",
     });
 
+    validate_input_user_name!(&form.name);
+    validate_input_user_password!(&form.password);
+
     let create_user_result = web::block(move || {
         let mut conn = pool.get()?;
         create_user(&mut conn, &form.name, &form.email, &form.password)
@@ -145,19 +155,36 @@ pub async fn users_logout(session: Session) -> actix_web::Result<impl Responder>
 
 #[get("/settings")]
 pub async fn users_settings_route(
+    pool: web::Data<DbPool>,
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    let user = get_session_user(&session)?;
+    let session_user = get_session_user(&session)?;
 
     let mut hb_data = json!({
-        "parent": "base",
-        "user": user,
+        "parent": "base"
     });
+
+    let user = web::block(move || {
+        let mut conn = pool.get()?;
+
+        // we need to get updated data from db
+
+        get_user_sanitized(&mut conn, session_user.id)
+            .map_err(|_| DbError::from("User by session not found"))
+    })
+    .await?;
+
+    match user {
+        Ok(user) => update_handlebars_data(&mut hb_data, "user", json!(user)),
+        Err(why) => set_flash_message(&session, FLASH_ERROR, &why.to_string())?,
+    }
 
     handle_flash_message(&mut hb_data, &session);
 
-    let body = hb.render("users/settings", &hb_data).unwrap();
+    let body = hb
+        .render("users/settings", &hb_data)
+        .map_err(|_| error::ErrorInternalServerError("Template error"))?;
 
     Ok(HttpResponse::Ok().body(body))
 }
@@ -170,6 +197,8 @@ pub async fn users_changepassword_post_route(
     // hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
     let session_user = get_session_user(&session)?;
+
+    validate_input_user_password!(&form.confirm_password);
 
     let user = web::block(move || {
         let mut conn = pool.get()?;
@@ -194,7 +223,7 @@ pub async fn users_changepassword_post_route(
         // update user password
         let new_password = &form.confirm_password;
 
-        change_user_password(&mut conn, &user, new_password)
+        update_user_password(&mut conn, &user, new_password)
             .map_err(|_| DbError::from("Failed to change password!"))
     })
     .await?;
@@ -205,6 +234,42 @@ pub async fn users_changepassword_post_route(
             &session,
             FLASH_ERROR,
             &format!("Failed to change user password! : {why}"),
+        )?,
+    }
+
+    Ok(create_redirect("/users/settings"))
+}
+
+#[post("/update")]
+pub async fn users_update_data_post_route(
+    pool: web::Data<DbPool>,
+    form: web::Form<UserUpdateFormData>,
+    session: Session,
+    // hb: web::Data<Handlebars<'_>>,
+) -> actix_web::Result<impl Responder> {
+    let session_user = get_session_user(&session)?;
+
+    validate_input_user_name!(&form.new_name);
+
+    let user = web::block(move || {
+        let mut conn = pool.get()?;
+
+        // get db user
+        let user = get_user_by_id(&mut conn, session_user.id)
+            .map_err(|_| DbError::from("User by session not found"))?;
+
+        // update user data
+        update_user_data(&mut conn, &user, &form.new_name)
+    })
+    .await?;
+
+    match user {
+        Ok(_) => set_flash_message(&session, FLASH_SUCCESS, "Updated user data!")?,
+
+        Err(why) => set_flash_message(
+            &session,
+            FLASH_ERROR,
+            &format!("Failed to update user data! : {why}"),
         )?,
     }
 

@@ -4,13 +4,17 @@ use actix_session::config::PersistentSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::dev::ServiceRequest;
 use actix_web::http;
+use actix_web::middleware::ErrorHandlers;
 use actix_web::{
     cookie::Key,
     web::{self},
     App, HttpServer,
 };
 use handlebars::{DirectorySourceOptions, Handlebars};
-use rust_forum::users::route::{users_changepassword_post_route, users_settings_route};
+use rust_forum::routes::error::fallback_error_handler;
+use rust_forum::users::route::{
+    users_changepassword_post_route, users_settings_route, users_update_data_post_route,
+};
 use rust_forum::{
     comments::routes::create_comment_submit_route,
     db::initialize_db_pool,
@@ -154,6 +158,7 @@ async fn main() -> std::io::Result<()> {
             .service(users_register_post_route)
             .service(users_logout)
             .service(users_changepassword_post_route)
+            .service(users_update_data_post_route)
             .service(users_settings_route);
 
         let posts_scope = web::scope("/posts")
@@ -170,6 +175,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(handlebars_ref.clone())
             .wrap(RateLimiter::default())
             .app_data(limiter.clone())
+            .wrap(ErrorHandlers::new().default_handler(fallback_error_handler))
             // .wrap(NormalizePath::new(TrailingSlash::Always))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)

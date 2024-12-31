@@ -79,7 +79,7 @@ pub fn get_user_sanitized(
     Ok(user_public)
 }
 
-pub fn change_user_password(
+pub fn update_user_password(
     conn: &mut PgConnection,
     user: &User,
     new_password: &str,
@@ -95,7 +95,7 @@ pub fn change_user_password(
     Ok(())
 }
 
-pub fn change_user_email(
+pub fn update_user_email(
     conn: &mut PgConnection,
     user: &User,
     new_email: &str,
@@ -104,5 +104,23 @@ pub fn change_user_email(
     diesel::update(users.filter(id.eq(user.id)))
         .set(email.eq(new_email))
         .execute(conn)?;
+    Ok(())
+}
+
+pub fn update_user_data(
+    conn: &mut PgConnection,
+    user: &User,
+    new_name: &str,
+) -> Result<(), DbError> {
+    use crate::schema::users::dsl::*;
+    diesel::update(users.filter(id.eq(user.id)))
+        .set(name.eq(new_name))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn delete_user(conn: &mut PgConnection, user: &User) -> Result<(), DbError> {
+    use crate::schema::users::dsl::*;
+    diesel::delete(users.filter(id.eq(user.id))).execute(conn)?;
     Ok(())
 }
