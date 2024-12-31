@@ -17,11 +17,7 @@ fn handle_session_flash_internal(data: &mut Value, session: &Session, level: Str
 
     if let Some(result) = session_flash_success {
         match result {
-            Ok(session_message) => {
-                dbg!(&level, &session_message);
-
-                update_handlebars_data(data, &level, json!(session_message));
-            }
+            Ok(session_message) => update_handlebars_data(data, &level, json!(session_message)),
             // unable to deserialize session value
             Err(_json_raw) => (),
         }

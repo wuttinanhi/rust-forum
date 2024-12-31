@@ -3,7 +3,8 @@ use actix_session::SessionExt;
 use actix_web::{
     dev::ServiceResponse,
     http::header::{LOCATION, REFERER},
-    middleware::ErrorHandlerResponse, HttpResponse, Result,
+    middleware::ErrorHandlerResponse,
+    HttpResponse, Result,
 };
 
 pub fn fallback_error_handler<B: actix_web::body::MessageBody + 'static>(
@@ -13,11 +14,8 @@ pub fn fallback_error_handler<B: actix_web::body::MessageBody + 'static>(
     let session = &req.get_session();
     let response_error = res.response().error();
 
-    dbg!(&response_error);
-
     if let Some(error) = response_error {
         let error_message = error.to_string();
-        dbg!(&error_message);
 
         set_flash_message(session, FLASH_ERROR, &error_message)?;
 
