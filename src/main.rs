@@ -27,8 +27,8 @@ use rust_forum::{
     },
 };
 
-// use actix_web::middleware::NormalizePath;
-// use actix_web::middleware::TrailingSlash;
+use actix_web::middleware::NormalizePath;
+use actix_web::middleware::TrailingSlash;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -176,7 +176,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(RateLimiter::default())
             .app_data(limiter.clone())
             .wrap(ErrorHandlers::new().default_handler(fallback_error_handler))
-            // .wrap(NormalizePath::new(TrailingSlash::Always))
+            .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
             .service(users_scope)

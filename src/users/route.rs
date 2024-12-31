@@ -1,7 +1,7 @@
 use actix_session::Session;
 use actix_web::{
     error, get, post,
-    web::{self, Redirect},
+    web::{self},
     HttpResponse, Responder,
 };
 
@@ -150,7 +150,7 @@ pub async fn users_logout(session: Session) -> actix_web::Result<impl Responder>
 
     set_flash_message(&session, "success", "Logout Successfully!")?;
 
-    Ok(Redirect::to("/"))
+    Ok(create_redirect("/"))
 }
 
 #[get("/settings")]
