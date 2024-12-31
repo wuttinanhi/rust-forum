@@ -10,6 +10,7 @@ use actix_web::{
     App, HttpServer,
 };
 use handlebars::{DirectorySourceOptions, Handlebars};
+use rust_forum::users::route::{users_changepassword_post_route, users_settings_route};
 use rust_forum::{
     comments::routes::create_comment_submit_route,
     db::initialize_db_pool,
@@ -151,7 +152,9 @@ async fn main() -> std::io::Result<()> {
             .service(users_login_post_route)
             .service(users_register_route)
             .service(users_register_post_route)
-            .service(users_logout);
+            .service(users_logout)
+            .service(users_changepassword_post_route)
+            .service(users_settings_route);
 
         let posts_scope = web::scope("/posts")
             .service(create_post_route)

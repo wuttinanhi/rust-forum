@@ -33,12 +33,10 @@ pub fn login_user(
     user_email: &str,
     user_password: &str,
 ) -> Result<User, DbError> {
-    use crate::schema::users::dsl::*;
-
     // Query the user by email
-    let user: User = users.filter(email.eq(user_email)).first(conn)?;
+    let user: User = get_user_by_email(conn, user_email)?;
 
-    let valid = verify(user_password, &user.password).unwrap_or(false);
+    let valid = validate_user_password(&user, user_password);
 
     // Verify the password (you would replace this with actual hashing logic)
     if valid {
@@ -50,17 +48,27 @@ pub fn login_user(
     }
 }
 
-pub fn get_user(conn: &mut PgConnection, target_user_id: i32) -> Result<User, DbError> {
+pub fn get_user_by_id(conn: &mut PgConnection, target_user_id: i32) -> Result<User, DbError> {
     use crate::schema::users::dsl::*;
     let user = users.filter(id.eq(target_user_id)).first(conn)?;
     Ok(user)
+}
+
+pub fn get_user_by_email(conn: &mut PgConnection, user_email: &str) -> Result<User, DbError> {
+    use crate::schema::users::dsl::*;
+    let user = users.filter(email.eq(user_email)).first(conn)?;
+    Ok(user)
+}
+
+pub fn validate_user_password(user: &User, user_password: &str) -> bool {
+    verify(user_password, &user.password).unwrap_or(false)
 }
 
 pub fn get_user_sanitized(
     conn: &mut PgConnection,
     target_user_id: i32,
 ) -> Result<UserPublic, DbError> {
-    let non_sanitized_user = get_user(conn, target_user_id)?;
+    let non_sanitized_user = get_user_by_id(conn, target_user_id)?;
 
     let user_public = UserPublic {
         id: non_sanitized_user.id,
@@ -69,4 +77,32 @@ pub fn get_user_sanitized(
     };
 
     Ok(user_public)
+}
+
+pub fn change_user_password(
+    conn: &mut PgConnection,
+    user: &User,
+    new_password: &str,
+) -> Result<(), DbError> {
+    use crate::schema::users::dsl::*;
+
+    let hashed = hash(new_password, DEFAULT_COST).unwrap();
+
+    diesel::update(users.filter(id.eq(user.id)))
+        .set(password.eq(&hashed))
+        .execute(conn)?;
+
+    Ok(())
+}
+
+pub fn change_user_email(
+    conn: &mut PgConnection,
+    user: &User,
+    new_email: &str,
+) -> Result<(), DbError> {
+    use crate::schema::users::dsl::*;
+    diesel::update(users.filter(id.eq(user.id)))
+        .set(email.eq(new_email))
+        .execute(conn)?;
+    Ok(())
 }

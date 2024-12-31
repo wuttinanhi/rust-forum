@@ -9,14 +9,20 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    db::DbPool,
+    db::{DbError, DbPool},
     users::{
         constants::SESSION_KEY_USER,
-        crud::{create_user, login_user},
-        dto::{UserLoginFormData, UserRegisterFormData},
+        crud::{
+            change_user_password, create_user, get_user_by_id, login_user, validate_user_password,
+        },
+        dto::{UserChangePasswordFormData, UserLoginFormData, UserRegisterFormData},
         types::{user_to_user_session, SessionUser},
     },
-    utils::{flash::set_flash_message, http::create_redirect},
+    utils::{
+        flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
+        http::create_redirect,
+        users::get_session_user,
+    },
 };
 
 #[get("/login")]
@@ -127,7 +133,7 @@ pub async fn users_register_post_route(
     Ok(create_redirect("/"))
 }
 
-#[get("/logout")]
+#[post("/logout")]
 pub async fn users_logout(session: Session) -> actix_web::Result<impl Responder> {
     // clear session
     session.clear();
@@ -135,4 +141,72 @@ pub async fn users_logout(session: Session) -> actix_web::Result<impl Responder>
     set_flash_message(&session, "success", "Logout Successfully!")?;
 
     Ok(Redirect::to("/"))
+}
+
+#[get("/settings")]
+pub async fn users_settings_route(
+    hb: web::Data<Handlebars<'_>>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    let user = get_session_user(&session)?;
+
+    let mut hb_data = json!({
+        "parent": "base",
+        "user": user,
+    });
+
+    handle_flash_message(&mut hb_data, &session);
+
+    let body = hb.render("users/settings", &hb_data).unwrap();
+
+    Ok(HttpResponse::Ok().body(body))
+}
+
+#[post("/changepassword")]
+pub async fn users_changepassword_post_route(
+    pool: web::Data<DbPool>,
+    form: web::Form<UserChangePasswordFormData>,
+    session: Session,
+    // hb: web::Data<Handlebars<'_>>,
+) -> actix_web::Result<impl Responder> {
+    let session_user = get_session_user(&session)?;
+
+    let user = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let new_password_and_confirm_password_equal = form.new_password == form.confirm_password;
+        if !new_password_and_confirm_password_equal {
+            return Err(DbError::from(
+                "New password and confirm password not equal!",
+            ));
+        }
+
+        // get db user
+        let user = get_user_by_id(&mut conn, session_user.id)
+            .map_err(|_| DbError::from("User by session not found"))?;
+
+        // validate current password
+        let current_password_valid = validate_user_password(&user, &form.current_password);
+        if !current_password_valid {
+            return Err(DbError::from("Invalid current password!"));
+        }
+
+        // update user password
+        let new_password = &form.confirm_password;
+
+        change_user_password(&mut conn, &user, new_password)
+            .map_err(|_| DbError::from("Failed to change password!"))
+    })
+    .await?;
+
+    match user {
+        Ok(_) => set_flash_message(&session, FLASH_SUCCESS, "Change user password completed!")?,
+        Err(why) => set_flash_message(
+            &session,
+            FLASH_ERROR,
+            &format!("Failed to change user password! : {why}"),
+        )?,
+    }
+
+    Ok(create_redirect("/users/settings"))
 }

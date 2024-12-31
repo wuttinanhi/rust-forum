@@ -12,3 +12,10 @@ pub struct UserRegisterFormData {
     pub email: String,
     pub password: String,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct UserChangePasswordFormData {
+    pub current_password: String,
+    pub new_password: String,
+    pub confirm_password: String,
+}

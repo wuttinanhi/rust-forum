@@ -1,1 +1,1 @@
-cargo watch -x 'run --bin rustforum'
+REDIS_PASSWORD=redis123 cargo watch -x 'run --bin rustforum'

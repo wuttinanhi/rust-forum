@@ -1,0 +1,57 @@
+{{#*inline "page"}}
+
+<div class="row mt-5">
+  <div class="col"></div>
+  <div class="col-6">
+    <form class="form-signin mt-3" method="post" action="/users/update">
+      <h3 class="h3 mb-3 font-weight-normal">User settings</h3>
+      <hr>
+
+      <div class="mb-3">
+        <label for="user_name" class="form-label">Name</label>
+        <input name="title" type="text" id="user_name" class="form-control" placeholder="Name" required="true"
+          value="{{user.name}}" />
+      </div>
+
+      <div class="mt-3">
+        <button class="btn btn-primary btn-block" type="submit">
+          Save
+        </button>
+      </div>
+    </form>
+
+    <form class="form-signin mt-5" method="post" action="/users/changepassword">
+      <h3 class="h3 mb-3 font-weight-normal">Change Password</h3>
+      <hr>
+
+      <label for="current_password" class="form-label">Current Password</label>
+      <input name="current_password" type="password" class="form-control" id="current_password"
+        placeholder="Current Password" required="true" />
+
+      <label for="new_password" class="form-label">New Password</label>
+      <input name="new_password" type="password" class="form-control" id="new_password" placeholder="New Password"
+        required="true" />
+
+      <label for="confirm_password" class="form-label">Confirm New Password</label>
+      <input name="confirm_password" type="password" class="form-control" id="confirm_password"
+        placeholder="Confirm New Password" required="true" />
+
+      <div class="mt-3">
+        <button class="btn btn-primary btn-block" type="submit">Change Password</button>
+      </div>
+    </form>
+
+    <form class="form-signin mt-5" method="post" action="/users/logout">
+      <h3 class="h3 mb-3 font-weight-normal">Logout</h3>
+      <hr>
+
+      <button class="btn btn-danger btn-block" type="submit">
+        Logout
+      </button>
+    </form>
+  </div>
+  <div class="col"></div>
+</div>
+
+{{/inline}}
+{{> (lookup this "parent")}}
