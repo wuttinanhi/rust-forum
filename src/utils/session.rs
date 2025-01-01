@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use crate::users::{constants::SESSION_KEY_USER, types::SessionUser};
 
-pub fn handle_session_user(session: &Session, data: &mut Value) {
+pub fn handlebars_add_user(session: &Session, data: &mut Value) {
     if let Ok(Some(user)) = session.get::<SessionUser>(SESSION_KEY_USER) {
         data.as_object_mut()
             .unwrap()

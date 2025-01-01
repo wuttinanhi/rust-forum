@@ -17,7 +17,7 @@ use crate::{
         flash::{handle_flash_message, set_flash_message},
         handlebars_helper::update_handlebars_data,
         http::create_redirect,
-        session::handle_session_user,
+        session::handlebars_add_user,
         users::get_session_user,
     },
 };
@@ -33,7 +33,7 @@ pub async fn create_post_route(
         "parent": "base"
     });
 
-    handle_session_user(&session, &mut data);
+    handlebars_add_user(&session, &mut data);
     handle_flash_message(&mut data, &session);
 
     let body = hb.render("posts/create", &data).unwrap();
@@ -112,7 +112,7 @@ pub async fn view_post_route(
         }
     }
 
-    handle_session_user(&session, &mut hb_data);
+    handlebars_add_user(&session, &mut hb_data);
     handle_flash_message(&mut hb_data, &session);
 
     let body = hb
@@ -128,15 +128,15 @@ pub async fn index_list_posts_route(
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
+    let mut data = json!({
+        "parent": "base",
+    });
+
     let list_posts_result = web::block(move || {
         let mut conn = pool.get()?;
         list_post_with_user(&mut conn)
     })
     .await?;
-
-    let mut data = json!({
-        "parent": "base",
-    });
 
     match list_posts_result {
         Ok(posts) => {
@@ -145,7 +145,7 @@ pub async fn index_list_posts_route(
         Err(_) => set_flash_message(&session, "error", "failed to list posts")?,
     }
 
-    handle_session_user(&session, &mut data);
+    handlebars_add_user(&session, &mut data);
     handle_flash_message(&mut data, &session);
 
     let body = hb.render("posts/index", &data).unwrap();

@@ -45,6 +45,7 @@
 
     <hr class="mt-5 my-3">
 
+    {{ #if user }}
     <form class="form-signin" method="post" action="/comments/create">
       <h1 class="h3 mb-3 font-weight-normal">Comment</h1>
 
@@ -60,6 +61,7 @@
         Comment
       </button>
     </form>
+    {{/if}}
 
 
   </div>
