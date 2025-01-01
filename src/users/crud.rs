@@ -1,4 +1,4 @@
-use super::types::UserPublic;
+use super::types::{user_to_user_public, UserPublic};
 use crate::db::DbError;
 use crate::models::{NewUser, User};
 use crate::schema::users as schema_users;
@@ -64,17 +64,13 @@ pub fn validate_user_password(user: &User, user_password: &str) -> bool {
     verify(user_password, &user.password).unwrap_or(false)
 }
 
-pub fn get_user_sanitized(
+pub fn get_user_sanitized_by_id(
     conn: &mut PgConnection,
     target_user_id: i32,
 ) -> Result<UserPublic, DbError> {
     let non_sanitized_user = get_user_by_id(conn, target_user_id)?;
 
-    let user_public = UserPublic {
-        id: non_sanitized_user.id,
-        name: non_sanitized_user.name,
-        created_at: non_sanitized_user.created_at,
-    };
+    let user_public = user_to_user_public(&non_sanitized_user);
 
     Ok(user_public)
 }
