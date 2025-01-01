@@ -298,79 +298,73 @@ pub async fn users_profile_picture_post_route(
 ) -> actix_web::Result<impl Responder> {
     let session_user = get_session_user(&session)?;
 
-    let pool_1 = pool.clone();
-    let pool_2 = pool.clone();
-
-    let db_user = web::block(move || {
-        let mut conn = pool_1.get().map_err(|_| DbError::from("Database error"))?;
-
-        get_user_by_id(&mut conn, session_user.id)
-            .map_err(|_| DbError::from("User by session not found"))
+    // get user from db
+    let db_user = web::block({
+        let pool = pool.clone();
+        move || {
+            let mut conn = pool.get().map_err(|_| DbError::from("Database error"))?;
+            get_user_by_id(&mut conn, session_user.id)
+                .map_err(|_| DbError::from("User by session not found"))
+        }
     })
     .await?
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    let content_type = form.profile_picture.content_type;
+    let content_type = form
+        .profile_picture
+        .content_type
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("Invalid MIME type"))?;
 
-    if let Some(mime) = content_type {
-        let content_type_string = mime.to_string();
-
-        if content_type_string != "image/jpeg" && content_type_string != "image/png" {
-            return Err(actix_web::error::ErrorBadRequest("Invalid file type"));
-        }
-
-        let size = form.profile_picture.size;
-        let size10mb = 10485760;
-
-        if size > size10mb {
-            return Err(actix_web::error::ErrorBadRequest("File too large"));
-        }
-
-        let unix_time = chrono::Utc::now().timestamp();
-        let file_path = format!("static/{}.jpg", unix_time);
-
-        let _result: Result<(), DbError> = web::block(move || {
-            // save user profile picture to static
-            let mut file = std::fs::File::create(&file_path)?;
-
-            let file_bytes: Vec<u8> = form
-                .profile_picture
-                .file
-                .bytes()
-                .collect::<Result<_, _>>()
-                .map_err(DbError::from)?;
-
-            file.write_all(&file_bytes)?;
-
-            // db update user data
-            let mut conn = pool_2
-                .get()
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-
-            let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
-
-            update_user_data(
-                &mut conn,
-                &db_user,
-                &UpdateUserNameAndProfilePicture {
-                    name: None,
-                    user_profile_picture_url: Some(&user_profile_picture_url_pre_slash),
-                },
-            )?;
-
-            println!(
-                "user profile picture uploaded: {}",
-                &user_profile_picture_url_pre_slash
-            );
-
-            Ok(())
-        })
-        .await?;
-
-        set_flash_message(&session, FLASH_SUCCESS, "File uploaded")?;
-    } else {
-        return Err(actix_web::error::ErrorBadRequest("No file uploaded"));
+    let content_type_string = content_type.to_string();
+    if content_type_string != "image/jpeg" && content_type_string != "image/png" {
+        return Err(actix_web::error::ErrorBadRequest("Invalid file type"));
     }
+
+    let size = form.profile_picture.size;
+    if size > 10 * 1024 * 1024 {
+        return Err(actix_web::error::ErrorBadRequest("File too large"));
+    }
+
+    let file_bytes: Vec<u8> = form
+        .profile_picture
+        .file
+        .bytes()
+        .collect::<Result<_, _>>()
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    let unix_time = chrono::Utc::now().timestamp();
+    let file_path = format!("static/{}.jpg", unix_time);
+
+    web::block(move || {
+        // save file to static
+        let mut file = std::fs::File::create(&file_path)?;
+        file.write_all(&file_bytes)?;
+
+        let mut conn = pool.get().map_err(|e| DbError::from(e))?;
+
+        // add slash to make it accessible from client
+        let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
+
+        update_user_data(
+            &mut conn,
+            &db_user,
+            &UpdateUserNameAndProfilePicture {
+                name: None,
+                user_profile_picture_url: Some(&user_profile_picture_url_pre_slash),
+            },
+        )?;
+
+        println!(
+            "user profile picture uploaded: {}",
+            &user_profile_picture_url_pre_slash
+        );
+
+        Ok::<_, DbError>(())
+    })
+    .await?
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    set_flash_message(&session, FLASH_SUCCESS, "File uploaded")?;
 
     Ok(create_redirect("/users/settings"))
 }
