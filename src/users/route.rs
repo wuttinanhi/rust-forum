@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    io::{Read, Write},
-};
+use std::io::{Read, Write};
 
 use actix_multipart::form::MultipartForm;
 use actix_session::Session;
@@ -16,17 +13,18 @@ use serde_json::json;
 
 use crate::{
     db::{DbError, DbPool},
+    models::UpdateUserNameAndProfilePicture,
     users::{
         constants::SESSION_KEY_USER,
         crud::{
-            create_user, get_user_by_id, get_user_sanitized, login_user, update_user_data,
+            create_user, get_user_by_id, get_user_sanitized_by_id, login_user, update_user_data,
             update_user_password, validate_user_password,
         },
         dto::{
             UserChangePasswordFormData, UserLoginFormData, UserRegisterFormData,
             UserUpdateFormData, UserUploadProfilePictureForm,
         },
-        types::{user_to_user_session, SessionUser},
+        types::{user_to_user_public, UserPublic},
     },
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
@@ -42,7 +40,7 @@ pub async fn users_login_route(
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    if session.get::<SessionUser>(SESSION_KEY_USER)?.is_some() {
+    if session.get::<UserPublic>(SESSION_KEY_USER)?.is_some() {
         set_flash_message(&session, "error", "User already logged in!")?;
 
         return Ok(create_redirect("/"));
@@ -79,9 +77,11 @@ pub async fn users_login_post_route(
 
     match user_result {
         Ok(user) => {
-            let user_session = user_to_user_session(&user);
+            // set session user value
 
-            session.insert(SESSION_KEY_USER, user_session)?;
+            let user_public = user_to_user_public(&user);
+
+            session.insert(SESSION_KEY_USER, user_public)?;
 
             Ok(create_redirect("/"))
         }
@@ -104,7 +104,7 @@ pub async fn users_register_route(
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    if session.get::<SessionUser>(SESSION_KEY_USER)?.is_some() {
+    if session.get::<UserPublic>(SESSION_KEY_USER)?.is_some() {
         set_flash_message(&session, "error", "User already logged in!")?;
 
         return Ok(create_redirect("/"));
@@ -177,7 +177,7 @@ pub async fn users_settings_route(
 
         // we need to get updated data from db
 
-        get_user_sanitized(&mut conn, session_user.id)
+        get_user_sanitized_by_id(&mut conn, session_user.id)
             .map_err(|_| DbError::from("User by session not found"))
     })
     .await?;
@@ -266,7 +266,14 @@ pub async fn users_update_data_post_route(
             .map_err(|_| DbError::from("User by session not found"))?;
 
         // update user data
-        update_user_data(&mut conn, &user, &form.new_name)
+        update_user_data(
+            &mut conn,
+            &user,
+            &UpdateUserNameAndProfilePicture {
+                name: Some(&form.new_name),
+                user_profile_picture_url: None,
+            },
+        )
     })
     .await?;
 
@@ -289,6 +296,20 @@ pub async fn users_profile_picture_post_route(
     session: Session,
     MultipartForm(form): MultipartForm<UserUploadProfilePictureForm>,
 ) -> actix_web::Result<impl Responder> {
+    let session_user = get_session_user(&session)?;
+
+    let pool_1 = pool.clone();
+    let pool_2 = pool.clone();
+
+    let db_user = web::block(move || {
+        let mut conn = pool_1.get().map_err(|_| DbError::from("Database error"))?;
+
+        get_user_by_id(&mut conn, session_user.id)
+            .map_err(|_| DbError::from("User by session not found"))
+    })
+    .await?
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
     let content_type = form.profile_picture.content_type;
 
     if let Some(mime) = content_type {
@@ -305,22 +326,46 @@ pub async fn users_profile_picture_post_route(
             return Err(actix_web::error::ErrorBadRequest("File too large"));
         }
 
-        let file: Result<File, std::io::Error> = web::block(|| {
+        let unix_time = chrono::Utc::now().timestamp();
+        let file_path = format!("static/{}.jpg", unix_time);
+
+        let _result: Result<(), DbError> = web::block(move || {
+            // save user profile picture to static
+            let mut file = std::fs::File::create(&file_path)?;
+
             let file_bytes: Vec<u8> = form
                 .profile_picture
                 .file
                 .bytes()
-                .collect::<Result<_, _>>()?;
-
-            let mut file = std::fs::File::create("test.jpg")?;
+                .collect::<Result<_, _>>()
+                .map_err(DbError::from)?;
 
             file.write_all(&file_bytes)?;
-            Ok(file)
+
+            // db update user data
+            let mut conn = pool_2
+                .get()
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+            let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
+
+            update_user_data(
+                &mut conn,
+                &db_user,
+                &UpdateUserNameAndProfilePicture {
+                    name: None,
+                    user_profile_picture_url: Some(&user_profile_picture_url_pre_slash),
+                },
+            )?;
+
+            println!(
+                "user profile picture uploaded: {}",
+                &user_profile_picture_url_pre_slash
+            );
+
+            Ok(())
         })
         .await?;
-
-        dbg!("file uploaded");
-        dbg!(file?);
 
         set_flash_message(&session, FLASH_SUCCESS, "File uploaded")?;
     } else {

@@ -9,7 +9,7 @@
 
     <form class="form mt-3" method="post" action="/users/profilepicture" enctype="multipart/form-data">
       <div class="my-2">
-        <img src="https://eu.ui-avatars.com/api/?name=John+Doe&size=250" class="rounded mx-auto d-block rounded-circle"
+        <img src="{{ user.user_profile_picture_url }}" class="rounded mx-auto d-block rounded-circle"
           style="width: 150px; height: 150px;">
       </div>
 

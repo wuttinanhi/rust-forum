@@ -12,7 +12,7 @@ use crate::{
     comments::crud::list_comments_with_user,
     db::{DbError, DbPool},
     posts::dto::{CreatePostFormData, PostPageData},
-    users::crud::get_user_sanitized,
+    users::crud::get_user_sanitized_by_id,
     utils::{
         flash::{handle_flash_message, set_flash_message},
         handlebars_helper::update_handlebars_data,
@@ -86,7 +86,7 @@ pub async fn view_post_route(
     let page_data = web::block(move || {
         let mut conn = pool.get()?;
         let post = get_post(&mut conn, post_id)?;
-        let author = get_user_sanitized(&mut conn, post.user_id)?;
+        let author = get_user_sanitized_by_id(&mut conn, post.user_id)?;
         let comments = list_comments_with_user(&mut conn, &post.id)?;
 
         Ok::<PostPageData, DbError>(PostPageData {

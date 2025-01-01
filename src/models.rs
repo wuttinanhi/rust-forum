@@ -63,6 +63,7 @@ pub struct User {
     pub password: String,
     pub created_at: chrono::NaiveDateTime,
     pub updated_at: chrono::NaiveDateTime,
+    pub user_profile_picture_url: Option<String>,
 }
 
 #[derive(Insertable)]
@@ -71,4 +72,11 @@ pub struct NewUser<'a> {
     pub name: &'a str,
     pub email: &'a str,
     pub password: &'a str,
+}
+
+#[derive(AsChangeset)]
+#[diesel(table_name = users)]
+pub struct UpdateUserNameAndProfilePicture<'a> {
+    pub name: Option<&'a str>,
+    pub user_profile_picture_url: Option<&'a str>,
 }

@@ -22,3 +22,5 @@ Cargo.lock
 .idea
 .idea/vcs.xml
 *.jpg
+
+./static

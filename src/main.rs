@@ -28,6 +28,7 @@ use rust_forum::{
     },
 };
 
+use actix_files as fs;
 use actix_web::middleware::NormalizePath;
 use actix_web::middleware::TrailingSlash;
 
@@ -179,6 +180,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(limiter.clone())
             .wrap(ErrorHandlers::new().default_handler(fallback_error_handler))
             .wrap(NormalizePath::new(TrailingSlash::Trim))
+            .service(fs::Files::new("/static", "./static"))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
             .service(users_scope)

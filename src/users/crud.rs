@@ -1,6 +1,6 @@
 use super::types::{user_to_user_public, UserPublic};
 use crate::db::DbError;
-use crate::models::{NewUser, User};
+use crate::models::{NewUser, UpdateUserNameAndProfilePicture, User};
 use crate::schema::users as schema_users;
 use bcrypt::{hash, verify, DEFAULT_COST};
 use diesel::result::Error;
@@ -106,11 +106,12 @@ pub fn update_user_email(
 pub fn update_user_data(
     conn: &mut PgConnection,
     user: &User,
-    new_name: &str,
+    new_data: &UpdateUserNameAndProfilePicture,
 ) -> Result<(), DbError> {
     use crate::schema::users::dsl::*;
+
     diesel::update(users.filter(id.eq(user.id)))
-        .set(name.eq(new_name))
+        .set(new_data)
         .execute(conn)?;
     Ok(())
 }

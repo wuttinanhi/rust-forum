@@ -14,7 +14,7 @@ pub fn fallback_error_handler<B: actix_web::body::MessageBody + 'static>(
     let session = &req.get_session();
     let response_error = res.response().error();
 
-    dbg!(&response_error);
+    // dbg!(&response_error);
 
     if let Some(error) = response_error {
         let error_message = error.to_string();

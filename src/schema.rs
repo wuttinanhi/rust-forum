@@ -36,6 +36,7 @@ diesel::table! {
         password -> Varchar,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        user_profile_picture_url -> Nullable<Varchar>,
     }
 }
 
