@@ -25,6 +25,7 @@ services:
 
   redis:
     image: docker.io/bitnami/redis:7.4
+    restart: always
     environment:
       - REDIS_PASSWORD=redis123
       # - ALLOW_EMPTY_PASSWORD=yes

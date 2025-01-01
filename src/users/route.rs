@@ -1,3 +1,9 @@
+use std::{
+    fs::File,
+    io::{Read, Write},
+};
+
+use actix_multipart::form::MultipartForm;
 use actix_session::Session;
 use actix_web::{
     error, get, post,
@@ -17,7 +23,8 @@ use crate::{
             update_user_password, validate_user_password,
         },
         dto::{
-            UserChangePasswordFormData, UserLoginFormData, UserRegisterFormData, UserUpdateFormData,
+            UserChangePasswordFormData, UserLoginFormData, UserRegisterFormData,
+            UserUpdateFormData, UserUploadProfilePictureForm,
         },
         types::{user_to_user_session, SessionUser},
     },
@@ -271,6 +278,53 @@ pub async fn users_update_data_post_route(
             FLASH_ERROR,
             &format!("Failed to update user data! : {why}"),
         )?,
+    }
+
+    Ok(create_redirect("/users/settings"))
+}
+
+#[post("/profilepicture")]
+pub async fn users_profile_picture_post_route(
+    pool: web::Data<DbPool>,
+    session: Session,
+    MultipartForm(form): MultipartForm<UserUploadProfilePictureForm>,
+) -> actix_web::Result<impl Responder> {
+    let content_type = form.profile_picture.content_type;
+
+    if let Some(mime) = content_type {
+        let content_type_string = mime.to_string();
+
+        if content_type_string != "image/jpeg" && content_type_string != "image/png" {
+            return Err(actix_web::error::ErrorBadRequest("Invalid file type"));
+        }
+
+        let size = form.profile_picture.size;
+        let size10mb = 10485760;
+
+        if size > size10mb {
+            return Err(actix_web::error::ErrorBadRequest("File too large"));
+        }
+
+        let file: Result<File, std::io::Error> = web::block(|| {
+            let file_bytes: Vec<u8> = form
+                .profile_picture
+                .file
+                .bytes()
+                .collect::<Result<_, _>>()?;
+
+            let mut file = std::fs::File::create("test.jpg")?;
+
+            file.write_all(&file_bytes)?;
+            Ok(file)
+        })
+        .await?;
+
+        dbg!("file uploaded");
+        dbg!(file?);
+
+        set_flash_message(&session, FLASH_SUCCESS, "File uploaded")?;
+    } else {
+        return Err(actix_web::error::ErrorBadRequest("No file uploaded"));
     }
 
     Ok(create_redirect("/users/settings"))

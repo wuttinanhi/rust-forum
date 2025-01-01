@@ -16,6 +16,8 @@ bcrypt = "0.16.0"
 actix-session = { version = "0.10.1", features = ["cookie-session"] }
 actix-cors = "0.7.0"
 actix-limitation = "0.5"
+actix-multipart = "0.7.2"
+futures-util = "0.3"
 
 [[bin]]
 name = "rustforum"

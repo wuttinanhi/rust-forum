@@ -1,3 +1,4 @@
+use actix_multipart::form::{tempfile::TempFile, MultipartForm};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -23,4 +24,10 @@ pub struct UserChangePasswordFormData {
 #[derive(Deserialize, Debug)]
 pub struct UserUpdateFormData {
     pub new_name: String,
+}
+
+#[derive(Debug, MultipartForm)]
+pub struct UserUploadProfilePictureForm {
+    #[multipart(limit = "10MB")]
+    pub profile_picture: TempFile,
 }
