@@ -1,4 +1,7 @@
-use std::io::{Read, Write};
+use std::{
+    io::{Read, Write},
+    sync::{Arc, Mutex},
+};
 
 use actix_multipart::form::MultipartForm;
 use actix_session::Session;
@@ -13,7 +16,8 @@ use serde_json::json;
 
 use crate::{
     db::{DbError, DbPool},
-    models::UpdateUserNameAndProfilePicture,
+    models::{Post, UpdateUserNameAndProfilePicture},
+    posts::crud::get_posts_by_user,
     users::{
         constants::SESSION_KEY_USER,
         crud::{
@@ -71,7 +75,8 @@ pub async fn users_login_post_route(
 
         login_user(&mut conn, &form.email, &form.password)
     })
-    .await?;
+    .await
+    .map_err(actix_web::error::ErrorInternalServerError)?;
 
     // map diesel query errors to a 500 error response
 
@@ -367,4 +372,53 @@ pub async fn users_profile_picture_post_route(
     set_flash_message(&session, FLASH_SUCCESS, "File uploaded")?;
 
     Ok(create_redirect("/users/settings"))
+}
+
+#[get("profile")]
+pub async fn users_view_profile_route(
+    pool: web::Data<DbPool>,
+    session: Session,
+    hb: web::Data<Handlebars<'_>>,
+) -> actix_web::Result<impl Responder> {
+    let mut hb_data = json!({
+        "parent": "base",
+    });
+
+    let user_created_posts: Arc<Mutex<Vec<Post>>> = Arc::new(Mutex::new(vec![]));
+
+    let user_created_posts_clone = Arc::clone(&user_created_posts);
+
+    let user_data = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let user_sanitized = get_user_sanitized_by_id(&mut conn, 1);
+
+        let posts = get_posts_by_user(&mut conn, 1);
+
+        user_created_posts_clone
+            .lock()
+            .unwrap()
+            .extend(posts.unwrap());
+
+        user_sanitized
+    })
+    .await?
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+    update_handlebars_data(&mut hb_data, "profile_users", json!(user_data));
+
+    let profile_users_created_posts = user_created_posts.lock().unwrap().clone();
+
+    update_handlebars_data(
+        &mut hb_data,
+        "profile_users_created_posts",
+        json!(profile_users_created_posts),
+    );
+
+    dbg!(profile_users_created_posts);
+
+    let body = hb
+        .render("users/profile", &hb_data)
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().body(body))
 }

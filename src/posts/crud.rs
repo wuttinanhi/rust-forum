@@ -87,3 +87,16 @@ pub fn list_post_with_user(
 
     Ok(posts_mapped)
 }
+
+pub fn get_posts_by_user(
+    conn: &mut PgConnection,
+    target_user_id: i32,
+) -> actix_web::Result<Vec<Post>, DbError> {
+    let user_posts = posts
+        .filter(user_id.eq(target_user_id))
+        .filter(deleted_at.is_null())
+        .order(created_at.desc())
+        .load(conn)?;
+
+    Ok(user_posts)
+}

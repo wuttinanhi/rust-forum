@@ -14,7 +14,7 @@ use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::routes::error::fallback_error_handler;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_post_route, users_settings_route,
-    users_update_data_post_route,
+    users_update_data_post_route, users_view_profile_route,
 };
 use rust_forum::{
     comments::routes::create_comment_submit_route,
@@ -162,6 +162,7 @@ async fn main() -> std::io::Result<()> {
             .service(users_changepassword_post_route)
             .service(users_update_data_post_route)
             .service(users_profile_picture_post_route)
+            .service(users_view_profile_route)
             .service(users_settings_route);
 
         let posts_scope = web::scope("/posts")
