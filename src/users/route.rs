@@ -404,9 +404,9 @@ pub async fn users_view_profile_route(
 
         let user_sanitized = get_user_sanitized_by_id(&mut conn, user_id)?;
 
-        let created_posts = get_posts_by_user(&mut conn, user_id)?;
-
         if fetch_mode_clone == "posts" {
+            let created_posts = get_posts_by_user(&mut conn, user_id)?;
+
             user_created_posts_clone
                 .lock()
                 .unwrap()
@@ -425,12 +425,11 @@ pub async fn users_view_profile_route(
         Ok(user_sanitized)
     })
     .await?
-    .map_err(|e: DbError| actix_web::error::ErrorInternalServerError(e))?;
+    .map_err(actix_web::error::ErrorInternalServerError)?;
 
     update_handlebars_data(&mut hb_data, "profile_users", json!(user_data));
 
     let profile_users_created_posts = &*user_created_posts.lock().unwrap();
-
     update_handlebars_data(
         &mut hb_data,
         "profile_users_created_posts",
@@ -438,7 +437,6 @@ pub async fn users_view_profile_route(
     );
 
     let profile_users_created_comments = &*user_created_comments.lock().unwrap();
-
     update_handlebars_data(
         &mut hb_data,
         "profile_users_created_comments",
