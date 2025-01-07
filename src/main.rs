@@ -33,14 +33,12 @@ use actix_files as fs;
 use actix_web::middleware::NormalizePath;
 use actix_web::middleware::TrailingSlash;
 
-
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-dotenvy::dotenv().ok();
-
     std::env::set_var("RUST_LOG", "info");
     env_logger::init();
+
+    dotenvy::dotenv().ok();
 
     // get mode from env
     // let app_mode = std::env::var("ENV").unwrap_or("dev".to_string());
@@ -75,6 +73,9 @@ dotenvy::dotenv().ok();
     }
 
     println!("ratelimit_redis_url: {:?}", &ratelimit_redis_url);
+
+    // create static directory if not exists
+    std::fs::create_dir_all("./static").expect("Failed to create static directory");
 
     HttpServer::new(move || {
         let ratelimit_redis_url = ratelimit_redis_url.clone();
