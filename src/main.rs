@@ -32,13 +32,14 @@ use rust_forum::{
 use actix_files as fs;
 use actix_web::middleware::NormalizePath;
 use actix_web::middleware::TrailingSlash;
+use dotenv::dotenv;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
+
     std::env::set_var("RUST_LOG", "info");
     env_logger::init();
-
-    dotenvy::dotenv().ok();
 
     // get mode from env
     // let app_mode = std::env::var("ENV").unwrap_or("dev".to_string());
