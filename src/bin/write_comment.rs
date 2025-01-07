@@ -1,4 +1,4 @@
-use comments::crud::create_comment;
+use comments::repository::create_comment;
 use rust_forum::*;
 use std::io::{stdin, Read};
 

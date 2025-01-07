@@ -11,7 +11,7 @@ use crate::{
     utils::{flash::set_flash_message, http::create_redirect, users::get_session_user},
 };
 
-use super::crud::create_comment;
+use super::repository::create_comment;
 
 #[post("/create")]
 pub async fn create_comment_submit_route(

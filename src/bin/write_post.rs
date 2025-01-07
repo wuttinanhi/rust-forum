@@ -1,4 +1,4 @@
-use rust_forum::posts::crud::create_post;
+use rust_forum::posts::repository::create_post;
 use rust_forum::*;
 use std::io::{stdin, Read};
 

@@ -9,10 +9,10 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::crud::list_comments_with_user,
+    comments::repository::list_comments_with_user,
     db::{DbError, DbPool},
     posts::dto::{CreatePostFormData, PostPageData},
-    users::crud::get_user_sanitized_by_id,
+    users::repository::get_user_sanitized_by_id,
     utils::{
         flash::{handle_flash_message, set_flash_message},
         handlebars_helper::update_handlebars_data,
@@ -22,7 +22,7 @@ use crate::{
     },
 };
 
-use super::crud::{create_post, get_post, list_post_with_user};
+use super::repository::{create_post, get_post, list_post_with_user};
 
 #[get("/create")]
 pub async fn create_post_route(

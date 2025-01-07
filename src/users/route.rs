@@ -15,13 +15,13 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::crud::get_comments_by_user,
+    comments::repository::get_comments_by_user,
     db::{DbError, DbPool},
     models::{Comment, Post, UpdateUserNameAndProfilePicture},
-    posts::crud::get_posts_by_user,
+    posts::repository::get_posts_by_user,
     users::{
         constants::SESSION_KEY_USER,
-        crud::{
+        repository::{
             create_user, get_user_by_id, get_user_sanitized_by_id, login_user, update_user_data,
             update_user_password, validate_user_password,
         },
