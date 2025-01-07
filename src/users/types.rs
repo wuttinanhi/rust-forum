@@ -1,3 +1,4 @@
+use actix_web::{FromRequest, HttpRequest};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
@@ -20,5 +21,24 @@ pub fn user_to_user_public(user: &User) -> UserPublic {
             "https://ui-avatars.com/api/?size=250&name={}",
             user.name
         )),
+    }
+}
+
+use futures::future::{ready, Ready};
+
+pub struct OptionalFetchMode(pub String);
+
+impl FromRequest for OptionalFetchMode {
+    type Error = actix_web::Error;
+    type Future = Ready<Result<Self, Self::Error>>;
+
+    fn from_request(req: &HttpRequest, _: &mut actix_web::dev::Payload) -> Self::Future {
+        let fetch_mode = req.match_info().get("fetch_mode").map(|s| s.to_string());
+
+        let fetch_mode_or = fetch_mode.unwrap_or("posts".to_string());
+
+        // unwrap_or("posts".to_string());
+
+        ready(Ok(OptionalFetchMode(fetch_mode_or)))
     }
 }

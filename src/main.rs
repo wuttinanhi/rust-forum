@@ -82,6 +82,27 @@ async fn main() -> std::io::Result<()> {
         // --- handlebars setup ---
         let mut handlebars = Handlebars::new();
 
+        // handlebars.register_helper(
+        //     "eq",
+        //     Box::new(
+        //         |h: &handlebars::Helper,
+        //          _: &handlebars::Handlebars,
+        //          _: &handlebars::Context,
+        //          _: &mut handlebars::RenderContext,
+        //          out: &mut dyn handlebars::Output|
+        //          -> handlebars::HelperResult {
+        //             let param1 = h.param(0).unwrap().value();
+        //             let param2 = h.param(1).unwrap().value();
+        //             if param1 == param2 {
+        //                 out.write("true")?;
+        //             } else {
+        //                 out.write("false")?;
+        //             }
+        //             Ok(())
+        //         },
+        //     ),
+        // );
+
         // set handlebars options
         let mut handlebars_options = DirectorySourceOptions::default();
         handlebars_options.tpl_extension = ".hbs".to_owned();
@@ -162,7 +183,10 @@ async fn main() -> std::io::Result<()> {
             .service(users_changepassword_post_route)
             .service(users_update_data_post_route)
             .service(users_profile_picture_post_route)
-            .service(users_view_profile_route)
+            .service(
+                web::resource(["/profile/{user_id}", "/profile/{user_id}/{fetch_mode}"])
+                    .to(users_view_profile_route),
+            )
             .service(users_settings_route);
 
         let posts_scope = web::scope("/posts")

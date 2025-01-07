@@ -15,8 +15,9 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
+    comments::crud::get_comments_by_user,
     db::{DbError, DbPool},
-    models::{Post, UpdateUserNameAndProfilePicture},
+    models::{Comment, Post, UpdateUserNameAndProfilePicture},
     posts::crud::get_posts_by_user,
     users::{
         constants::SESSION_KEY_USER,
@@ -38,6 +39,8 @@ use crate::{
     },
     validate_input_user_name, validate_input_user_password,
 };
+
+use super::types::OptionalFetchMode;
 
 #[get("/login")]
 pub async fn users_login_route(
@@ -345,7 +348,7 @@ pub async fn users_profile_picture_post_route(
         let mut file = std::fs::File::create(&file_path)?;
         file.write_all(&file_bytes)?;
 
-        let mut conn = pool.get().map_err(|e| DbError::from(e))?;
+        let mut conn = pool.get().map_err(DbError::from)?;
 
         // add slash to make it accessible from client
         let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
@@ -374,39 +377,59 @@ pub async fn users_profile_picture_post_route(
     Ok(create_redirect("/users/settings"))
 }
 
-#[get("profile")]
+// #[get("/profile/{user_id}/{fetch_mode:.*}")]
 pub async fn users_view_profile_route(
     pool: web::Data<DbPool>,
     session: Session,
     hb: web::Data<Handlebars<'_>>,
+    path: web::Path<(i32,)>,
+    fetch_mode: OptionalFetchMode,
 ) -> actix_web::Result<impl Responder> {
+    let user_id = path.into_inner().0;
+    let fetch_mode = fetch_mode.0;
+    let fetch_mode_clone = fetch_mode.clone();
+
     let mut hb_data = json!({
         "parent": "base",
     });
 
     let user_created_posts: Arc<Mutex<Vec<Post>>> = Arc::new(Mutex::new(vec![]));
+    let user_created_comments: Arc<Mutex<Vec<Comment>>> = Arc::new(Mutex::new(vec![]));
 
     let user_created_posts_clone = Arc::clone(&user_created_posts);
+    let user_created_comments_clone = user_created_comments.clone();
 
     let user_data = web::block(move || {
         let mut conn = pool.get()?;
 
-        let user_sanitized = get_user_sanitized_by_id(&mut conn, 1);
+        let user_sanitized = get_user_sanitized_by_id(&mut conn, user_id)?;
 
-        let posts = get_posts_by_user(&mut conn, 1);
+        let created_posts = get_posts_by_user(&mut conn, user_id)?;
 
-        user_created_posts_clone
-            .lock()
-            .unwrap()
-            .extend(posts.unwrap());
+        if fetch_mode_clone == "posts" {
+            user_created_posts_clone
+                .lock()
+                .unwrap()
+                .extend(created_posts);
+        } else if fetch_mode_clone == "comments" {
+            let created_comments = get_comments_by_user(&mut conn, &user_id)?;
 
-        user_sanitized
+            user_created_comments_clone
+                .lock()
+                .unwrap()
+                .extend(created_comments);
+        } else {
+            return Err(DbError::from("no mode"));
+        }
+
+        Ok(user_sanitized)
     })
     .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
+    .map_err(|e: DbError| actix_web::error::ErrorInternalServerError(e))?;
+
     update_handlebars_data(&mut hb_data, "profile_users", json!(user_data));
 
-    let profile_users_created_posts = user_created_posts.lock().unwrap().clone();
+    let profile_users_created_posts = &*user_created_posts.lock().unwrap();
 
     update_handlebars_data(
         &mut hb_data,
@@ -414,7 +437,21 @@ pub async fn users_view_profile_route(
         json!(profile_users_created_posts),
     );
 
-    dbg!(profile_users_created_posts);
+    let profile_users_created_comments = &*user_created_comments.lock().unwrap();
+
+    update_handlebars_data(
+        &mut hb_data,
+        "profile_users_created_comments",
+        json!(profile_users_created_comments),
+    );
+
+    if fetch_mode == "posts" {
+        update_handlebars_data(&mut hb_data, "fetch_mode_posts", json!(true));
+    } else if fetch_mode == "comments" {
+        update_handlebars_data(&mut hb_data, "fetch_mode_comments", json!(true));
+    }
+
+    handle_flash_message(&mut hb_data, &session);
 
     let body = hb
         .render("users/profile", &hb_data)

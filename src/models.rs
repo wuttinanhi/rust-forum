@@ -37,7 +37,16 @@ pub struct NewPost<'a> {
 }
 
 #[derive(
-    Queryable, Selectable, Identifiable, Associations, Debug, Eq, PartialEq, Serialize, Deserialize,
+    Queryable,
+    Selectable,
+    Identifiable,
+    Associations,
+    Debug,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Clone,
 )]
 #[diesel(belongs_to(Post))]
 #[diesel(table_name = comments)]

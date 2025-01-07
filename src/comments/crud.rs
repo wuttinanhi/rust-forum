@@ -1,7 +1,6 @@
 use crate::db::DbError;
 use crate::models::{Comment, NewComment, User};
 use crate::schema::comments as schema_comments;
-use crate::schema::comments::dsl::*;
 use crate::schema::users::dsl::*;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 
@@ -31,6 +30,7 @@ pub fn get_comment(
     conn: &mut PgConnection,
     comment_id: &i32,
 ) -> actix_web::Result<Comment, DbError> {
+    use crate::schema::comments::dsl::*;
     let comment = comments.find(comment_id).first(conn)?;
     Ok(comment)
 }
@@ -54,6 +54,8 @@ pub fn update_comment(
     target_comment_id: &i32,
     new_body: &str,
 ) -> actix_web::Result<Comment, DbError> {
+    use crate::schema::comments::dsl::*;
+
     let comment = diesel::update(comments.find(target_comment_id))
         .set(content.eq(new_body))
         .returning(Comment::as_returning())
@@ -66,6 +68,8 @@ pub fn delete_post(
     conn: &mut PgConnection,
     target_post_id: i32,
 ) -> actix_web::Result<usize, DbError> {
+    use crate::schema::comments::dsl::*;
+
     let delete_usize = diesel::update(comments.find(target_post_id))
         .set(deleted_at.eq(diesel::dsl::now))
         .execute(conn)?;
@@ -92,4 +96,18 @@ pub fn list_comments_with_user(
         .collect();
 
     Ok(comments_mapped)
+}
+
+pub fn get_comments_by_user(
+    conn: &mut PgConnection,
+    target_user_id: &i32,
+) -> actix_web::Result<Vec<Comment>, DbError> {
+    use crate::schema::comments::dsl::*;
+
+    let user_comments = comments
+        .filter(user_id.eq(target_user_id))
+        .order(created_at.desc())
+        .load(conn)?;
+
+    Ok(user_comments)
 }
