@@ -16,6 +16,7 @@ use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_post_route, users_settings_route,
     users_update_data_post_route, users_view_profile_route,
 };
+use rust_forum::utils::pagination::test_pagination;
 use rust_forum::{
     comments::routes::create_comment_submit_route,
     db::initialize_db_pool,
@@ -32,8 +33,12 @@ use actix_files as fs;
 use actix_web::middleware::NormalizePath;
 use actix_web::middleware::TrailingSlash;
 
+
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+dotenvy::dotenv().ok();
+
     std::env::set_var("RUST_LOG", "info");
     env_logger::init();
 
@@ -211,6 +216,7 @@ async fn main() -> std::io::Result<()> {
             .service(users_scope)
             .service(posts_scope)
             .service(comments_scope)
+            .service(test_pagination)
             .route("/", web::to(index_list_posts_route))
     })
     .bind((host, port))?
