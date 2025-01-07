@@ -12,21 +12,18 @@ use crate::{
 #[derive(Debug, Deserialize)]
 pub struct QueryPagination {
     pub page: i64,
-    pub per_page: i64,
+    pub limit: i64,
 }
 
 impl Default for QueryPagination {
     fn default() -> Self {
-        QueryPagination {
-            page: 1,
-            per_page: 10,
-        }
+        QueryPagination { page: 1, limit: 10 }
     }
 }
 
 impl ToString for QueryPagination {
     fn to_string(&self) -> String {
-        format!("page: {}, per_page: {}", self.page, self.per_page)
+        format!("page: {}, per_page: {}", self.page, self.limit)
     }
 }
 
@@ -38,27 +35,31 @@ impl FromRequest for QueryPagination {
         // Default values
         let mut pagination = QueryPagination::default();
 
-        // Extract query parameters
-        if let Some(query) = req.query_string().split('&').next() {
-            for pair in query.split('&') {
-                let mut parts = pair.split('=');
+        let query = req.query_string();
 
-                if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
-                    match key {
-                        "page" => {
-                            if let Ok(parsed_page) = value.parse::<i64>() {
+        // Extract query parameters
+        for pair in query.split('&') {
+            let mut parts = pair.split('=');
+
+            if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
+                match key {
+                    "page" => {
+                        if let Ok(parsed_page) = value.parse::<i64>() {
+                            if parsed_page >= 1 {
                                 pagination.page = parsed_page;
                             }
                         }
+                    }
 
-                        "per_page" => {
-                            if let Ok(parsed_per_page) = value.parse::<i64>() {
-                                pagination.per_page = parsed_per_page;
+                    "per_page" => {
+                        if let Ok(limit) = value.parse::<i64>() {
+                            if limit >= 1 && limit <= 100 {
+                                pagination.limit = limit;
                             }
                         }
-
-                        _ => {}
                     }
+
+                    _ => {}
                 }
             }
         }
@@ -82,14 +83,12 @@ pub async fn test_pagination(
     })
     .await?;
 
-    // dbg!(&posts);
-
     match posts {
         Ok(posts) => {
             let json_value = json!(posts).to_string();
 
             // pagination_data.to_string()
-            return Ok(HttpResponse::Ok().body(json_value));
+            return Ok(HttpResponse::Ok().json(json_value));
         }
         Err(_) => {
             return Ok(HttpResponse::InternalServerError().body("error"));

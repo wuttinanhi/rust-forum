@@ -38,11 +38,13 @@ pub fn list_posts(
     conn: &mut PgConnection,
     pagination_opts: &QueryPagination,
 ) -> actix_web::Result<Vec<Post>, DbError> {
+    let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
+
     let posts_vec = posts
         .filter(deleted_at.is_null())
         .order(created_at.desc())
-        .limit(pagination_opts.per_page)
-        .offset((pagination_opts.page - 1) * pagination_opts.per_page)
+        .offset(offset_value)
+        .limit(pagination_opts.limit)
         .load(conn)?;
 
     Ok(posts_vec)
