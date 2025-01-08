@@ -1,6 +1,6 @@
 use actix_web::{get, web, Error, FromRequest, HttpRequest, HttpResponse, Responder};
 use futures::future::{ready, Ready};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     posts::repository::list_posts,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct QueryPagination {
     pub page: i64,
     pub limit: i64,
@@ -94,4 +94,99 @@ pub async fn test_pagination(
             return Ok(HttpResponse::InternalServerError().body("error"));
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct HandlebarsPaginationResult {
+    pub page: i64,
+    pub limit: i64,
+    pub total_pages: i64,
+}
+
+pub fn build_handlebars_pagination_result(
+    total_entity: i64,
+    page: i64,
+    limit: i64,
+) -> HandlebarsPaginationResult {
+    HandlebarsPaginationResult {
+        limit,
+        page,
+        total_pages: (total_entity as f64 / limit as f64).ceil() as i64,
+    }
+}
+
+use handlebars::{Context, Handlebars, Helper, HelperResult, Output, RenderContext};
+
+pub fn handlebars_pagination_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
+    let pagination_result = h
+        .param(0)
+        .ok_or_else(|| handlebars::RenderError::new("Param 0 is required for pagination_helper"))?;
+
+    let pagination_result: HandlebarsPaginationResult =
+        serde_json::from_value(pagination_result.value().clone())
+            .map_err(|e| handlebars::RenderErrorReason::InvalidJsonIndex(e.to_string()))?;
+
+    let mut output_html = String::new();
+
+    output_html.push_str(&format!(
+        " <div id=\"pagination\" class=\"mt-3\">
+            <nav aria-label=\"Page navigation example\">
+                <ul class=\"pagination justify-content-end\">"
+    ));
+
+    for page in 1..=pagination_result.total_pages {
+        output_html.push_str(&format!(
+            "<li class=\"page-item\"><a class=\"page-link\" href=\"?page={}&per_page={}\">{}</a></li>",
+            page, pagination_result.limit, page,
+        ));
+    }
+
+    output_html.push_str(&format!(
+        " <div class=\"px-2\">
+                        <div class=\"input-group mb-3\">
+                            <input name=\"goto_page\" type=\"number\" value=\"{}\" class=\"form-control\" placeholder=\"Page\" aria-label=\"Page\"
+                                aria-describedby=\"button-addon2\" style=\"width: 5em;\">
+
+                            <button class=\"btn btn-outline-primary\" type=\"button\" id=\"button-addon2\">Go</button>
+                        </div>
+                    </div>
+
+                    <div class=\"px-2\">
+                        <div class=\"input-group\">
+                            <select class=\"form-select\" id=\"page_limit\" aria-label=\"page limit\" style=\"height: 2.5rem;\">",
+                            pagination_result.page
+    ));
+
+    for limit in [10, 20, 50, 100].iter() {
+        let should_selected = if pagination_result.limit == *limit {
+            "selected"
+        } else {
+            ""
+        };
+
+        output_html.push_str(&format!(
+            "<option value=\"{}\" {}>{}</option>",
+            limit, should_selected, limit
+        ));
+    }
+
+    output_html.push_str(
+        "</select>
+                        </div>
+                    </div>
+
+                </ul>
+            </nav>
+        </div>",
+    );
+
+    out.write(&output_html)?;
+
+    Ok(())
 }

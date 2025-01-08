@@ -16,7 +16,7 @@ use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_post_route, users_settings_route,
     users_update_data_post_route, users_view_profile_route,
 };
-use rust_forum::utils::pagination::test_pagination;
+use rust_forum::utils::pagination::{handlebars_pagination_helper, test_pagination};
 use rust_forum::{
     comments::routes::create_comment_submit_route,
     db::initialize_db_pool,
@@ -88,6 +88,8 @@ async fn main() -> std::io::Result<()> {
 
         // --- handlebars setup ---
         let mut handlebars = Handlebars::new();
+
+        handlebars.register_helper("pagination", Box::new(handlebars_pagination_helper));
 
         // handlebars.register_helper(
         //     "eq",

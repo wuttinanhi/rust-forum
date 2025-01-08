@@ -4,15 +4,15 @@
   <div class="col"></div>
   <div class="col-6">
 
-    <div class="mt-2">
+    <div class="mt-1">
       <img src="{{profile_users.user_profile_picture_url}}" class="rounded mx-auto d-block rounded-circle"
         style="width: 150px; height: 150px;">
 
-      <h3 class="h3 mt-5 mb-3 font-weight-normal text-center">{{profile_users.name}}</h3>
+      <h3 class="h3 my-3 font-weight-normal text-center">{{profile_users.name}}</h3>
     </div>
 
 
-    <ul class="nav nav-tabs mt-5">
+    <ul class="nav nav-tabs mt-2">
       <li class="nav-item">
         <a class="nav-link {{#if fetch_mode_posts}} active {{/if}}" aria-current="page"
           href="/users/profile/{{profile_users.id}}/posts">

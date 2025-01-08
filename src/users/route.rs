@@ -21,13 +21,13 @@ use crate::{
     posts::repository::get_posts_by_user,
     users::{
         constants::SESSION_KEY_USER,
-        repository::{
-            create_user, get_user_by_id, get_user_sanitized_by_id, login_user, update_user_data,
-            update_user_password, validate_user_password,
-        },
         dto::{
             UserChangePasswordFormData, UserLoginFormData, UserRegisterFormData,
             UserUpdateFormData, UserUploadProfilePictureForm,
+        },
+        repository::{
+            create_user, get_user_by_id, get_user_sanitized_by_id, login_user, update_user_data,
+            update_user_password, validate_user_password,
         },
         types::{user_to_user_public, UserPublic},
     },
@@ -372,7 +372,7 @@ pub async fn users_profile_picture_post_route(
     .await?
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    set_flash_message(&session, FLASH_SUCCESS, "File uploaded")?;
+    set_flash_message(&session, FLASH_SUCCESS, "Profile picture uploaded")?;
 
     Ok(create_redirect("/users/settings"))
 }

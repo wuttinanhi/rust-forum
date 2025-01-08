@@ -76,15 +76,25 @@ pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<u
     Ok(delete_result)
 }
 
+pub struct ListPostWithUserResult {
+    pub posts: Vec<PostWithUser>,
+    pub total_posts: i64,
+}
+
 pub fn list_post_with_user(
     conn: &mut PgConnection,
-) -> actix_web::Result<Vec<PostWithUser>, DbError> {
+    pagination_opts: &QueryPagination,
+) -> actix_web::Result<ListPostWithUserResult, DbError> {
+    let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
+
     use crate::schema::posts::dsl::{created_at, posts};
     use crate::schema::users::dsl::*;
 
     let posts_raw = posts
         .inner_join(users)
         .order(created_at.desc())
+        .offset(offset_value)
+        .limit(pagination_opts.limit)
         .select((Post::as_select(), User::as_select()))
         .load::<(Post, User)>(conn)?;
 
@@ -93,7 +103,15 @@ pub fn list_post_with_user(
         .map(|(post, user)| PostWithUser { post, user })
         .collect();
 
-    Ok(posts_mapped)
+    let total_posts = schema_posts::table
+        .filter(deleted_at.is_null())
+        .count()
+        .get_result::<i64>(conn)?;
+
+    Ok(ListPostWithUserResult {
+        posts: posts_mapped,
+        total_posts: total_posts,
+    })
 }
 
 pub fn get_posts_by_user(

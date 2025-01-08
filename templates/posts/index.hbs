@@ -30,13 +30,18 @@
                             {{this.post.title}}
                         </a>
                         <br>
-                        by: {{this.user.name}} at {{this.post.created_at}}
+                        by:
+                        <a href="/users/profile/{{this.user.id}}">{{this.user.name}}</a>
+
+                        at {{this.post.created_at}}
                     </p>
                 </div>
             </div>
 
             {{/each}}
         </div>
+
+        {{pagination pagination_result}}
 
     </div>
     <div class="col"></div>

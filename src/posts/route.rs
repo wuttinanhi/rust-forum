@@ -17,6 +17,7 @@ use crate::{
         flash::{handle_flash_message, set_flash_message},
         handlebars_helper::update_handlebars_data,
         http::create_redirect,
+        pagination::{build_handlebars_pagination_result, QueryPagination},
         session::handlebars_add_user,
         users::get_session_user,
     },
@@ -124,6 +125,7 @@ pub async fn view_post_route(
 
 // #[get("/")]
 pub async fn index_list_posts_route(
+    pagination_data: QueryPagination,
     pool: web::Data<DbPool>,
     hb: web::Data<Handlebars<'_>>,
     session: Session,
@@ -132,16 +134,30 @@ pub async fn index_list_posts_route(
         "parent": "base",
     });
 
-    let list_posts_result = web::block(move || {
+    let pagination_data_clone = pagination_data.clone();
+    let posts_result = web::block(move || {
         let mut conn = pool.get()?;
-        list_post_with_user(&mut conn)
+        list_post_with_user(&mut conn, &pagination_data_clone)
     })
     .await?;
 
-    match list_posts_result {
-        Ok(posts) => {
-            update_handlebars_data(&mut data, "posts", serde_json::to_value(&posts).unwrap());
+    match posts_result {
+        Ok(result) => {
+            update_handlebars_data(
+                &mut data,
+                "posts",
+                serde_json::to_value(&result.posts).unwrap(),
+            );
+
+            let pagination_result = build_handlebars_pagination_result(
+                result.total_posts,
+                pagination_data.page,
+                pagination_data.limit,
+            );
+
+            update_handlebars_data(&mut data, "pagination_result", json!(pagination_result));
         }
+
         Err(_) => set_flash_message(&session, "error", "failed to list posts")?,
     }
 
