@@ -135,9 +135,10 @@ pub fn handlebars_pagination_helper(
     let mut output_html = String::new();
 
     output_html.push_str(&format!(
-        " <div id=\"pagination\" class=\"mt-3\">
+        "<div id=\"pagination\" class=\"mt-3\">
             <nav aria-label=\"Page navigation example\">
-                <ul class=\"pagination justify-content-end\">"
+                <ul class=\"pagination justify-content-end\">
+        "
     ));
 
     for page in 1..=pagination_result.total_pages {
@@ -147,20 +148,23 @@ pub fn handlebars_pagination_helper(
         ));
     }
 
-    output_html.push_str(&format!(
-        " <div class=\"px-2\">
-                        <div class=\"input-group mb-3\">
-                            <input name=\"goto_page\" type=\"number\" value=\"{}\" class=\"form-control\" placeholder=\"Page\" aria-label=\"Page\"
-                                aria-describedby=\"button-addon2\" style=\"width: 5em;\">
+    output_html.push_str(&format!("
+ <div class=\"px-2\">
+    <form method=\"get\" action=\"\" class=\"input-group mb-3\">
+        <input name=\"page\" type=\"number\" value=\"{}\" min=\"1\" class=\"form-control\" placeholder=\"Page\"
+            style=\"width: 3rem;\" aria-label=\"Page\" aria-describedby=\"button-addon2\">
 
-                            <button class=\"btn btn-outline-primary\" type=\"button\" id=\"button-addon2\">Go</button>
-                        </div>
-                    </div>
+        <input name=\"per_page\" type=\"hidden\" value=\"{}\" style=\"display: none;\">
 
-                    <div class=\"px-2\">
-                        <div class=\"input-group\">
-                            <select class=\"form-select\" id=\"page_limit\" aria-label=\"page limit\" style=\"height: 2.5rem;\">",
-                            pagination_result.page
+        <button class=\"btn btn-outline-primary\" type=\"submit\" id=\"button-addon2\">Go</button>
+    </form>
+</div>
+
+<div class=\"px-2\">
+    <div class=\"input-group\">
+        <select class=\"form-select\" id=\"page_limit\" onchange=\"javascript:handleSelect(this)\" aria-label=\"page limit\" style=\"height: 2.5rem;\">
+",
+                            pagination_result.page, pagination_result.limit
     ));
 
     for limit in [10, 20, 50, 100].iter() {
@@ -171,19 +175,29 @@ pub fn handlebars_pagination_helper(
         };
 
         output_html.push_str(&format!(
-            "<option value=\"{}\" {}>{}</option>",
-            limit, should_selected, limit
+            "<option value=\"?page={}&per_page={}\" {}>{}</option>",
+            pagination_result.page, limit, should_selected, limit
         ));
     }
 
     output_html.push_str(
-        "</select>
+        "
+    </select>
                         </div>
                     </div>
 
                 </ul>
             </nav>
-        </div>",
+        </div>
+        
+<script type=\"text/javascript\">
+    function handleSelect(elm){
+        window.location = elm.value;
+    }
+</script>
+
+
+",
     );
 
     out.write(&output_html)?;
