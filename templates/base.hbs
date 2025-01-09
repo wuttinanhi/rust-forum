@@ -87,17 +87,19 @@
             <div class="col"></div>
 
             <div class="col-6">
-                {{#if error}}
-                <div class="alert alert-warning" role="alert">
-                    {{error}}
-                </div>
-                {{/if}}
+                <div class="mt-5" id="notification">
+                    {{#if error}}
+                    <div class="alert alert-warning" role="alert">
+                        {{error}}
+                    </div>
+                    {{/if}}
 
-                {{#if success}}
-                <div class="alert alert-success" role="alert">
-                    {{success}}
+                    {{#if success}}
+                    <div class="alert alert-success" role="alert">
+                        {{success}}
+                    </div>
+                    {{/if}}
                 </div>
-                {{/if}}
             </div>
 
             <div class="col"></div>

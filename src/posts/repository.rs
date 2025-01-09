@@ -84,10 +84,11 @@ pub fn list_post_with_user(
     let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
 
     use crate::schema::posts::dsl::{created_at, posts};
-    use crate::schema::users::dsl::*;
+    use crate::schema::users::dsl::users;
 
     let posts_raw = posts
         .inner_join(users)
+        .filter(deleted_at.is_null())
         .order(created_at.desc())
         .offset(offset_value)
         .limit(pagination_opts.limit)

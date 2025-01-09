@@ -9,9 +9,12 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::{repository::list_comments_with_user, types::CommentPublic},
+    comments::{
+        repository::{delete_comment, list_comments_with_user},
+        types::CommentPublic,
+    },
     db::{DbError, DbPool},
-    posts::{dto::CreatePostFormData, types::PostPublic},
+    posts::{dto::CreatePostFormData, repository::delete_post, types::PostPublic},
     utils::{
         flash::{handle_flash_message, set_flash_message},
         handlebars_helper::update_handlebars_data,
@@ -165,4 +168,38 @@ pub async fn index_list_posts_route(
     let body = hb.render("posts/index", &data).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
+}
+
+#[post("/delete/{post_id}")]
+pub async fn delete_post_route(
+    pool: web::Data<DbPool>,
+    path: web::Path<i32>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    let post_id = path.into_inner();
+    let session_user = get_session_user(&session)?;
+
+    let delete_post_result = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let post = get_post(&mut conn, post_id)
+            .map_err(|e| DbError::from(format!("failed to get post {}", e)))?;
+
+        if post.user_id != session_user.id {
+            return Err(DbError::from("User does not own post"));
+        }
+
+        delete_post(&mut conn, post_id)
+    })
+    .await?;
+
+    match delete_post_result {
+        Ok(_) => set_flash_message(&session, "success", "Deleted post")?,
+
+        Err(why) => {
+            set_flash_message(&session, "error", &format!("Failed to delete post {}", why))?
+        }
+    }
+
+    Ok(create_redirect("/"))
 }

@@ -66,7 +66,7 @@ pub fn update_comment(
     Ok(comment)
 }
 
-pub fn delete_post(
+pub fn delete_comment(
     conn: &mut PgConnection,
     target_post_id: i32,
 ) -> actix_web::Result<usize, DbError> {
@@ -83,11 +83,12 @@ pub fn list_comments_with_user(
     conn: &mut PgConnection,
     parent_post_id: &i32,
 ) -> actix_web::Result<Vec<CommentPublic>, DbError> {
-    use crate::schema::comments::dsl::*;
+    use crate::schema::comments::dsl::{comments, deleted_at, post_id};
 
     let comments_joined = comments
         .inner_join(users)
         .filter(post_id.eq(parent_post_id))
+        .filter(deleted_at.is_null())
         .order(created_at.asc())
         .select((Comment::as_select(), User::as_select()))
         .load::<(Comment, User)>(conn)?;
