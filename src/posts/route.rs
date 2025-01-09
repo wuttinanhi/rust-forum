@@ -103,8 +103,6 @@ pub async fn view_post_route(
 
     match data_result {
         Ok((post, comments)) => {
-            dbg!(&post);
-
             update_handlebars_data(&mut hb_data, "post", json!(post));
             update_handlebars_data(&mut hb_data, "comments", json!(comments));
         }
