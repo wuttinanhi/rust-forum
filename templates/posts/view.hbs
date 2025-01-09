@@ -5,21 +5,33 @@
   <div class="col"></div>
   <div class="col-6">
 
-    <h1>{{post.title}}</h1>
+    <h1>{{post.post.title}}</h1>
 
     <div class="card bg-light my-5">
       {{!-- <div class="card-header">Header</div> --}}
       <div class="card-body">
         <p>
-          {{post.body}}
+          {{post.post.body}}
         </p>
       </div>
       <div class="card-footer">
-        <a href="/posts/{{post.id}}">
-          #{{post.id}}
-        </a>
 
-        Posted by: {{post_user.name}} at {{post.created_at}}
+        <div class="d-flex flex-row gap-2 mt-2 mb-0 py-0">
+          <div>
+            <a href="/posts/{{post.post.id}}">#{{post.post.id}}</a>
+          </div>
+
+          <div>
+            <i class="bi bi-person"></i>
+            <a href="/users/profile/{{post.user.id}}">{{post.user.name}}</a>
+          </div>
+
+          <div>
+            <i class="bi bi-calendar"></i>
+            <span class="mx-2">{{post.time_human}}</span>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -33,11 +45,21 @@
         </div>
 
         <div class="card-footer">
-          <a href="/posts/{{this.comment.post_id}}#{{this.comment.id}}">
-            #{{this.comment.id}}
-          </a>
+          <div class="d-flex flex-row gap-2 mt-2 mb-0 py-0">
+            <div>
+              <a href="/posts/{{this.comment.post_id}}#{{this.comment.id}}">#{{this.comment.id}}</a>
+            </div>
 
-          Comment by: {{this.user.name}} at {{this.comment.created_at}}
+            <div>
+              <i class="bi bi-person"></i>
+              <a href="/users/profile/{{this.user.id}}">{{this.user.name}}</a>
+            </div>
+
+            <div>
+              <i class="bi bi-calendar"></i>
+              <span class="mx-2">{{this.time_human}}</span>
+            </div>
+          </div>
         </div>
       </div>
       {{/each}}
@@ -55,7 +77,7 @@
         <label for="comment_body"></label>
       </div>
 
-      <input type="hidden" name="post_id" id="post_id" value="{{post.id}}" />
+      <input type="hidden" name="post_id" id="post_id" value="{{post.post.id}}" />
 
       <button class="btn btn-lg btn-primary btn-block" type="submit">
         Comment

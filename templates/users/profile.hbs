@@ -33,16 +33,17 @@
       {{#each profile_users_created_posts}}
 
       <div class="card my-3 p-0" id="{{this.post.id}}">
-        <div class="card-body px-3 pt-2 pb-0 m-0">
-          <p>
-            <a href="/posts/{{this.id}}">
-              {{this.title}}
-            </a>
+        <div class="card-body px-3 py-2 m-0">
+          <a href="/posts/{{this.id}}">
+            {{this.post.title}}
+          </a>
 
-            <br>
-
-            at {{this.created_at}}
-          </p>
+          <div class="d-flex flex-row gap-2 my-2 py-0">
+            <div>
+              <i class="bi bi-calendar"></i>
+              <span class="mx-1">{{this.time_human}}</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -54,16 +55,17 @@
       {{#each profile_users_created_comments}}
 
       <div class="card my-3 p-0" id="{{this.comment.id}}">
-        <div class="card-body px-3 pt-2 pb-0 m-0">
-          <p>
-            <a href="/comments/{{this.id}}">
-              {{this.content}}
-            </a>
+        <div class="card-body px-3 py-2 m-0">
+          <a href="/posts/{{this.comment.post_id}}#{{this.comment.id}}">
+            {{this.comment.content}}
+          </a>
 
-            <br>
-
-            at {{this.created_at}}
-          </p>
+          <div class="d-flex flex-row gap-2 my-2 py-0">
+            <div>
+              <i class="bi bi-calendar"></i>
+              <span class="mx-1">{{this.time_human}}</span>
+            </div>
+          </div>
         </div>
       </div>
 

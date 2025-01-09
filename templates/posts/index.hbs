@@ -24,17 +24,22 @@
             {{#each posts}}
 
             <div class="card my-3 p-0" id="{{this.post.id}}">
-                <div class="card-body p-3 m-0">
-                    <p>
-                        <a href="/posts/{{this.post.id}}">
-                            {{this.post.title}}
-                        </a>
-                        <br>
-                        by:
-                        <a href="/users/profile/{{this.user.id}}">{{this.user.name}}</a>
+                <div class="card-body m-0">
+                    <a href="/posts/{{this.post.id}}">
+                        {{this.post.title}}
+                    </a>
 
-                        at {{this.post.created_at}}
-                    </p>
+                    <div class="d-flex flex-row gap-3 mt-2 mb-0 py-0">
+                        <div>
+                            <i class="bi bi-person"></i>
+                            <a href="/users/profile/{{this.user.id}}">{{this.user.name}}</a>
+                        </div>
+
+                        <div>
+                            <i class="bi bi-calendar"></i>
+                            <span class="mx-2">{{this.time_human}}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use actix_web::{get, web, Error, FromRequest, HttpRequest, HttpResponse, Responder};
 use futures::future::{ready, Ready};
 use serde::{Deserialize, Serialize};
@@ -21,9 +23,9 @@ impl Default for QueryPagination {
     }
 }
 
-impl ToString for QueryPagination {
-    fn to_string(&self) -> String {
-        format!("page: {}, per_page: {}", self.page, self.limit)
+impl Display for QueryPagination {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "page: {}, per_page: {}", self.page, self.limit)
     }
 }
 
@@ -53,7 +55,7 @@ impl FromRequest for QueryPagination {
 
                     "per_page" => {
                         if let Ok(limit) = value.parse::<i64>() {
-                            if limit >= 1 && limit <= 100 {
+                            if (1..=100).contains(&limit) {
                                 pagination.limit = limit;
                             }
                         }
@@ -88,11 +90,9 @@ pub async fn test_pagination(
             let json_value = json!(posts).to_string();
 
             // pagination_data.to_string()
-            return Ok(HttpResponse::Ok().json(json_value));
+            Ok(HttpResponse::Ok().json(json_value))
         }
-        Err(_) => {
-            return Ok(HttpResponse::InternalServerError().body("error"));
-        }
+        Err(_) => Ok(HttpResponse::InternalServerError().body("error")),
     }
 }
 
@@ -124,9 +124,9 @@ pub fn handlebars_pagination_helper(
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> HelperResult {
-    let pagination_result = h
-        .param(0)
-        .ok_or_else(|| handlebars::RenderError::new("Param 0 is required for pagination_helper"))?;
+    let pagination_result = h.param(0).ok_or_else(|| {
+        handlebars::RenderErrorReason::ParamNotFoundForIndex("pagination_result", 0)
+    })?;
 
     let pagination_result: HandlebarsPaginationResult =
         serde_json::from_value(pagination_result.value().clone())
@@ -134,12 +134,12 @@ pub fn handlebars_pagination_helper(
 
     let mut output_html = String::new();
 
-    output_html.push_str(&format!(
+    output_html.push_str(
         "<div id=\"pagination\" class=\"mt-3\">
             <nav aria-label=\"Page navigation example\">
                 <ul class=\"pagination justify-content-end\">
-        "
-    ));
+        ",
+    );
 
     for page in 1..=pagination_result.total_pages {
         output_html.push_str(&format!(

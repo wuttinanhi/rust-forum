@@ -15,10 +15,10 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::repository::get_comments_by_user,
+    comments::{repository::get_comments_by_user, types::CommentPublic},
     db::{DbError, DbPool},
     models::{Comment, Post, UpdateUserNameAndProfilePicture},
-    posts::repository::get_posts_by_user,
+    posts::{repository::get_posts_by_user, types::PostPublic},
     users::{
         constants::SESSION_KEY_USER,
         dto::{
@@ -35,6 +35,7 @@ use crate::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
         http::create_redirect,
+        pagination::QueryPagination,
         users::get_session_user,
     },
     validate_input_user_name, validate_input_user_password,
@@ -393,8 +394,8 @@ pub async fn users_view_profile_route(
         "parent": "base",
     });
 
-    let user_created_posts: Arc<Mutex<Vec<Post>>> = Arc::new(Mutex::new(vec![]));
-    let user_created_comments: Arc<Mutex<Vec<Comment>>> = Arc::new(Mutex::new(vec![]));
+    let user_created_posts: Arc<Mutex<Vec<PostPublic>>> = Arc::new(Mutex::new(vec![]));
+    let user_created_comments: Arc<Mutex<Vec<CommentPublic>>> = Arc::new(Mutex::new(vec![]));
 
     let user_created_posts_clone = Arc::clone(&user_created_posts);
     let user_created_comments_clone = user_created_comments.clone();
@@ -405,21 +406,23 @@ pub async fn users_view_profile_route(
         let user_sanitized = get_user_sanitized_by_id(&mut conn, user_id)?;
 
         if fetch_mode_clone == "posts" {
-            let created_posts = get_posts_by_user(&mut conn, user_id)?;
+            let created_posts =
+                get_posts_by_user(&mut conn, user_id, &QueryPagination { limit: 10, page: 1 })?;
 
             user_created_posts_clone
                 .lock()
                 .unwrap()
-                .extend(created_posts);
+                .extend(created_posts.posts);
         } else if fetch_mode_clone == "comments" {
-            let created_comments = get_comments_by_user(&mut conn, &user_id)?;
+            let created_comments =
+                get_comments_by_user(&mut conn, &user_id, &QueryPagination { limit: 10, page: 1 })?;
 
             user_created_comments_clone
                 .lock()
                 .unwrap()
-                .extend(created_comments);
+                .extend(created_comments.comments);
         } else {
-            return Err(DbError::from("no mode"));
+            return Err(DbError::from("no fetch mode was provide"));
         }
 
         Ok(user_sanitized)

@@ -3,9 +3,10 @@ use crate::models::{NewPost, Post, User};
 use crate::schema::posts as schema_posts;
 use crate::schema::posts::dsl::*;
 use crate::utils::pagination::QueryPagination;
+use crate::utils::time::time_to_human_readable;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 
-use super::types::PostWithUser;
+use super::types::{ListPostResult, PostPublic};
 
 pub fn create_post(
     conn: &mut PgConnection,
@@ -76,15 +77,10 @@ pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<u
     Ok(delete_result)
 }
 
-pub struct ListPostWithUserResult {
-    pub posts: Vec<PostWithUser>,
-    pub total_posts: i64,
-}
-
 pub fn list_post_with_user(
     conn: &mut PgConnection,
     pagination_opts: &QueryPagination,
-) -> actix_web::Result<ListPostWithUserResult, DbError> {
+) -> actix_web::Result<ListPostResult, DbError> {
     let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
 
     use crate::schema::posts::dsl::{created_at, posts};
@@ -100,7 +96,11 @@ pub fn list_post_with_user(
 
     let posts_mapped = posts_raw
         .into_iter()
-        .map(|(post, user)| PostWithUser { post, user })
+        .map(|(post, user)| PostPublic {
+            user,
+            time_human: time_to_human_readable(post.created_at),
+            post: post,
+        })
         .collect();
 
     let total_posts = schema_posts::table
@@ -108,21 +108,68 @@ pub fn list_post_with_user(
         .count()
         .get_result::<i64>(conn)?;
 
-    Ok(ListPostWithUserResult {
+    Ok(ListPostResult {
         posts: posts_mapped,
-        total_posts: total_posts,
+        total: total_posts,
     })
 }
 
 pub fn get_posts_by_user(
     conn: &mut PgConnection,
     target_user_id: i32,
-) -> actix_web::Result<Vec<Post>, DbError> {
-    let user_posts = posts
-        .filter(user_id.eq(target_user_id))
-        .filter(deleted_at.is_null())
-        .order(created_at.desc())
-        .load(conn)?;
+    pagination_opts: &QueryPagination,
+) -> actix_web::Result<ListPostResult, DbError> {
+    let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
 
-    Ok(user_posts)
+    use crate::schema::posts::dsl::{created_at, posts, user_id};
+    use crate::schema::users::dsl::*;
+
+    let posts_raw = posts
+        .inner_join(users)
+        .filter(user_id.eq(target_user_id))
+        .order(created_at.desc())
+        .offset(offset_value)
+        .limit(pagination_opts.limit)
+        .select((Post::as_select(), User::as_select()))
+        .load::<(Post, User)>(conn)?;
+
+    let posts_mapped = posts_raw
+        .into_iter()
+        .map(|(post, user)| PostPublic {
+            user,
+            time_human: time_to_human_readable(post.created_at),
+            post: post,
+        })
+        .collect();
+
+    let total_posts = schema_posts::table
+        .filter(deleted_at.is_null())
+        .count()
+        .get_result::<i64>(conn)?;
+
+    Ok(ListPostResult {
+        posts: posts_mapped,
+        total: total_posts,
+    })
+}
+
+pub fn get_post_with_user(
+    conn: &mut PgConnection,
+    post_id: i32,
+) -> actix_web::Result<PostPublic, DbError> {
+    use crate::schema::posts as schema_posts;
+    use crate::schema::users as schema_users;
+
+    let (post, user) = posts
+        .inner_join(schema_users::table)
+        .filter(schema_posts::id.eq(post_id))
+        .first::<(Post, User)>(conn)?;
+
+    let post_public = PostPublic {
+        user,
+        time_human: time_to_human_readable(post.created_at),
+        post,
+    };
+
+    Ok(post_public)
 }

@@ -2,9 +2,11 @@ use crate::db::DbError;
 use crate::models::{Comment, NewComment, User};
 use crate::schema::comments as schema_comments;
 use crate::schema::users::dsl::*;
+use crate::utils::pagination::QueryPagination;
+use crate::utils::time::time_to_human_readable;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 
-use super::types::CommentWithUser;
+use super::types::{CommentPublic, ListCommentResult};
 
 pub fn create_comment(
     conn: &mut PgConnection,
@@ -80,19 +82,23 @@ pub fn delete_post(
 pub fn list_comments_with_user(
     conn: &mut PgConnection,
     parent_post_id: &i32,
-) -> actix_web::Result<Vec<CommentWithUser>, DbError> {
+) -> actix_web::Result<Vec<CommentPublic>, DbError> {
     use crate::schema::comments::dsl::*;
 
-    let comments_raw = comments
+    let comments_joined = comments
         .inner_join(users)
         .filter(post_id.eq(parent_post_id))
         .order(created_at.asc())
         .select((Comment::as_select(), User::as_select()))
         .load::<(Comment, User)>(conn)?;
 
-    let comments_mapped = comments_raw
+    let comments_mapped = comments_joined
         .into_iter()
-        .map(|(comment, user)| CommentWithUser { comment, user })
+        .map(|(comment, user)| CommentPublic {
+            time_human: time_to_human_readable(comment.created_at),
+            comment,
+            user,
+        })
         .collect();
 
     Ok(comments_mapped)
@@ -101,13 +107,37 @@ pub fn list_comments_with_user(
 pub fn get_comments_by_user(
     conn: &mut PgConnection,
     target_user_id: &i32,
-) -> actix_web::Result<Vec<Comment>, DbError> {
+    pagination_opts: &QueryPagination,
+) -> actix_web::Result<ListCommentResult, DbError> {
+    let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
+
     use crate::schema::comments::dsl::*;
 
-    let user_comments = comments
+    let comments_joined = comments
+        .inner_join(users)
         .filter(user_id.eq(target_user_id))
-        .order(created_at.desc())
-        .load(conn)?;
+        .order(created_at.asc())
+        .limit(pagination_opts.limit)
+        .offset(offset_value)
+        .select((Comment::as_select(), User::as_select()))
+        .load::<(Comment, User)>(conn)?;
 
-    Ok(user_comments)
+    let comments_mapped = comments_joined
+        .into_iter()
+        .map(|(comment, user)| CommentPublic {
+            time_human: time_to_human_readable(comment.created_at),
+            comment,
+            user,
+        })
+        .collect();
+
+    let total = schema_comments::table
+        .filter(deleted_at.is_null())
+        .count()
+        .get_result::<i64>(conn)?;
+
+    Ok(ListCommentResult {
+        comments: comments_mapped,
+        total: total,
+    })
 }
