@@ -1,8 +1,10 @@
 use actix_session::Session;
 use actix_web::{
-    get, post,
+    get,
+    http::header,
+    post,
     web::{self},
-    HttpResponse, Responder,
+    HttpRequest, HttpResponse, Responder,
 };
 
 use handlebars::Handlebars;
@@ -16,7 +18,7 @@ use crate::{
     db::{DbError, DbPool},
     posts::{dto::CreatePostFormData, repository::delete_post, types::PostPublic},
     utils::{
-        flash::{handle_flash_message, set_flash_message},
+        flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
         http::create_redirect,
         pagination::{build_handlebars_pagination_result, QueryPagination},
@@ -170,6 +172,7 @@ pub async fn index_list_posts_route(
 
 #[post("/delete/{post_id}")]
 pub async fn delete_post_route(
+    req: HttpRequest,
     pool: web::Data<DbPool>,
     path: web::Path<i32>,
     session: Session,
@@ -187,17 +190,32 @@ pub async fn delete_post_route(
             return Err(DbError::from("User does not own post"));
         }
 
-        delete_post(&mut conn, post_id)
+        Ok(())
+
+        // delete_post(&mut conn, post_id)
     })
     .await?;
 
     match delete_post_result {
-        Ok(_) => set_flash_message(&session, "success", "Deleted post")?,
+        Ok(_) => {
+            set_flash_message(&session, FLASH_SUCCESS, "Post deleted")?;
+            Ok(create_redirect("/"))
+        }
 
         Err(why) => {
-            set_flash_message(&session, "error", &format!("Failed to delete post {}", why))?
+            let previous_url = req
+                .headers()
+                .get(header::REFERER)
+                .and_then(|h| h.to_str().ok())
+                .unwrap_or("/");
+
+            set_flash_message(
+                &session,
+                FLASH_ERROR,
+                &format!("Failed to delete post {}", why),
+            )?;
+
+            Ok(create_redirect(previous_url))
         }
     }
-
-    Ok(create_redirect("/"))
 }
