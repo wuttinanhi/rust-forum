@@ -11,10 +11,7 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::{
-        repository::get_comments_with_user,
-        types::CommentPublic,
-    },
+    comments::{repository::get_comments_with_user, types::CommentPublic},
     db::{DbError, DbPool},
     posts::{dto::CreatePostFormData, repository::delete_post, types::PostPublic},
     utils::{
@@ -42,6 +39,7 @@ pub async fn create_post_route(
 
     handlebars_add_user(&session, &mut data);
     handle_flash_message(&mut data, &session);
+    update_handlebars_data(&mut data, "title", json!("Create new post"));
 
     let body = hb.render("posts/create", &data).unwrap();
 
@@ -105,13 +103,16 @@ pub async fn view_post_route(
 
     match data_result {
         Ok((post, comments)) => {
+            update_handlebars_data(&mut hb_data, "title", json!(post.post.title));
             update_handlebars_data(&mut hb_data, "post", json!(post));
             update_handlebars_data(&mut hb_data, "comments", json!(comments));
         }
 
         Err(e) => {
-            let error_msg = format!("Failed to get post: {}", e);
+            update_handlebars_data(&mut hb_data, "title", json!("error"));
+            let error_msg = format!("Error : {}", e);
             set_flash_message(&session, "error", &error_msg)?;
+
             return Ok(HttpResponse::Found()
                 .append_header(("Location", "/"))
                 .finish());
@@ -164,6 +165,7 @@ pub async fn index_list_posts_route(
 
     handlebars_add_user(&session, &mut data);
     handle_flash_message(&mut data, &session);
+    update_handlebars_data(&mut data, "title", json!("Posts"));
 
     let body = hb.render("posts/index", &data).unwrap();
 

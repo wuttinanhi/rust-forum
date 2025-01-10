@@ -119,7 +119,7 @@ pub fn get_comments_by_user(
         .inner_join(users)
         .filter(user_id.eq(target_user_id))
         .filter(deleted_at.is_null())
-        .order(created_at.asc())
+        .order(created_at.desc())
         .limit(pagination_opts.limit)
         .offset(offset_value)
         .select((Comment::as_select(), User::as_select()))

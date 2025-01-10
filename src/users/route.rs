@@ -38,6 +38,7 @@ use crate::{
         pagination::{
             build_handlebars_pagination_result, HandlebarsPaginationResult, QueryPagination,
         },
+        session::handlebars_add_user,
         users::get_session_user,
     },
     validate_input_user_name, validate_input_user_password,
@@ -56,10 +57,11 @@ pub async fn users_login_route(
         return Ok(create_redirect("/"));
     }
 
-    let data = json!({
+    let mut data = json!({
         "parent": "base"
     });
 
+    update_handlebars_data(&mut data, "title", json!("Login"));
     let body = hb.render("users/login", &data).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
@@ -121,10 +123,11 @@ pub async fn users_register_route(
         return Ok(create_redirect("/"));
     }
 
-    let data = json!({
+    let mut data = json!({
         "parent": "base"
     });
 
+    update_handlebars_data(&mut data, "title", json!("Register"));
     let body = hb.render("users/register", &data).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
@@ -199,6 +202,7 @@ pub async fn users_settings_route(
     }
 
     handle_flash_message(&mut hb_data, &session);
+    update_handlebars_data(&mut hb_data, "title", json!("User settings"));
 
     let body = hb
         .render("users/settings", &hb_data)
@@ -451,6 +455,11 @@ pub async fn users_view_profile_route(
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
     update_handlebars_data(&mut hb_data, "profile_users", json!(user_data));
+    update_handlebars_data(
+        &mut hb_data,
+        "title",
+        json!(format!("Profile {}", user_data.name)),
+    );
 
     let profile_users_created_posts = &*user_created_posts.lock().unwrap();
     update_handlebars_data(
@@ -481,6 +490,7 @@ pub async fn users_view_profile_route(
     );
 
     handle_flash_message(&mut hb_data, &session);
+    handlebars_add_user(&session, &mut hb_data);
 
     let body = hb
         .render("users/profile", &hb_data)
