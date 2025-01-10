@@ -12,7 +12,7 @@ use serde_json::json;
 
 use crate::{
     comments::{
-        repository::{delete_comment, list_comments_with_user},
+        repository::get_comments_with_user,
         types::CommentPublic,
     },
     db::{DbError, DbPool},
@@ -29,7 +29,7 @@ use crate::{
 
 use crate::posts::repository::get_post_with_user;
 
-use super::repository::{create_post, get_post, list_post_with_user};
+use super::repository::{create_post, get_post, get_posts_with_user};
 
 #[get("/create")]
 pub async fn create_post_route(
@@ -96,7 +96,7 @@ pub async fn view_post_route(
         let post = get_post_with_user(&mut conn, post_id)
             .map_err(|e| DbError::from(format!("Failed to get post: {}", e)))?;
 
-        let comments = list_comments_with_user(&mut conn, &post.post.id)
+        let comments = get_comments_with_user(&mut conn, &post.post.id)
             .map_err(|e| DbError::from(format!("Failed to get comments: {}", e)))?;
 
         Ok((post, comments))
@@ -142,7 +142,7 @@ pub async fn index_list_posts_route(
     let pagination_data_clone = pagination_data.clone();
     let posts_result = web::block(move || {
         let mut conn = pool.get()?;
-        list_post_with_user(&mut conn, &pagination_data_clone)
+        get_posts_with_user(&mut conn, &pagination_data_clone)
     })
     .await?;
 

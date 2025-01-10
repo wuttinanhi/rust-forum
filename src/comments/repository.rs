@@ -37,7 +37,7 @@ pub fn get_comment(
     Ok(comment)
 }
 
-pub fn list_comments(
+pub fn get_comments(
     conn: &mut PgConnection,
     parent_post_id: &i32,
 ) -> actix_web::Result<Vec<Comment>, DbError> {
@@ -79,7 +79,7 @@ pub fn delete_comment(
     Ok(delete_usize)
 }
 
-pub fn list_comments_with_user(
+pub fn get_comments_with_user(
     conn: &mut PgConnection,
     parent_post_id: &i32,
 ) -> actix_web::Result<Vec<CommentPublic>, DbError> {
@@ -112,11 +112,13 @@ pub fn get_comments_by_user(
 ) -> actix_web::Result<ListCommentResult, DbError> {
     let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
 
-    use crate::schema::comments::dsl::*;
+    use crate::schema::comments::dsl::{comments, deleted_at, user_id};
+    use crate::schema::users::dsl::users;
 
     let comments_joined = comments
         .inner_join(users)
         .filter(user_id.eq(target_user_id))
+        .filter(deleted_at.is_null())
         .order(created_at.asc())
         .limit(pagination_opts.limit)
         .offset(offset_value)
@@ -133,12 +135,13 @@ pub fn get_comments_by_user(
         .collect();
 
     let total = schema_comments::table
+        .filter(user_id.eq(target_user_id))
         .filter(deleted_at.is_null())
         .count()
         .get_result::<i64>(conn)?;
 
     Ok(ListCommentResult {
         comments: comments_mapped,
-        total: total,
+        total,
     })
 }

@@ -35,7 +35,7 @@ pub fn get_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<Post
     Ok(post)
 }
 
-pub fn list_posts(
+pub fn get_posts(
     conn: &mut PgConnection,
     pagination_opts: &QueryPagination,
 ) -> actix_web::Result<Vec<Post>, DbError> {
@@ -44,8 +44,8 @@ pub fn list_posts(
     let posts_vec = posts
         .filter(deleted_at.is_null())
         .order(created_at.desc())
-        .offset(offset_value)
         .limit(pagination_opts.limit)
+        .offset(offset_value)
         .load(conn)?;
 
     Ok(posts_vec)
@@ -77,7 +77,7 @@ pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<u
     Ok(delete_result)
 }
 
-pub fn list_post_with_user(
+pub fn get_posts_with_user(
     conn: &mut PgConnection,
     pagination_opts: &QueryPagination,
 ) -> actix_web::Result<ListPostResult, DbError> {
@@ -90,8 +90,8 @@ pub fn list_post_with_user(
         .inner_join(users)
         .filter(deleted_at.is_null())
         .order(created_at.desc())
-        .offset(offset_value)
         .limit(pagination_opts.limit)
+        .offset(offset_value)
         .select((Post::as_select(), User::as_select()))
         .load::<(Post, User)>(conn)?;
 
@@ -100,7 +100,7 @@ pub fn list_post_with_user(
         .map(|(post, user)| PostPublic {
             user,
             time_human: time_to_human_readable(post.created_at),
-            post: post,
+            post,
         })
         .collect();
 
@@ -122,15 +122,16 @@ pub fn get_posts_by_user(
 ) -> actix_web::Result<ListPostResult, DbError> {
     let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
 
-    use crate::schema::posts::dsl::{created_at, posts, user_id};
-    use crate::schema::users::dsl::*;
+    use crate::schema::posts::dsl::{created_at, deleted_at, posts, user_id};
+    use crate::schema::users::dsl::users;
 
     let posts_raw = posts
         .inner_join(users)
         .filter(user_id.eq(target_user_id))
+        .filter(deleted_at.is_null())
         .order(created_at.desc())
-        .offset(offset_value)
         .limit(pagination_opts.limit)
+        .offset(offset_value)
         .select((Post::as_select(), User::as_select()))
         .load::<(Post, User)>(conn)?;
 
@@ -139,11 +140,12 @@ pub fn get_posts_by_user(
         .map(|(post, user)| PostPublic {
             user,
             time_human: time_to_human_readable(post.created_at),
-            post: post,
+            post,
         })
         .collect();
 
     let total_posts = schema_posts::table
+        .filter(user_id.eq(target_user_id))
         .filter(deleted_at.is_null())
         .count()
         .get_result::<i64>(conn)?;

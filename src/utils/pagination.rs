@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::{
     db::{DbError, DbPool},
     models::Post,
-    posts::repository::list_posts,
+    posts::repository::get_posts,
 };
 
 #[derive(Debug, Deserialize, Clone)]
@@ -75,11 +75,9 @@ pub async fn test_pagination(
     pagination_data: QueryPagination,
     pool: web::Data<DbPool>,
 ) -> actix_web::Result<impl Responder> {
-    dbg!(&pagination_data);
-
     let posts: Result<Vec<Post>, DbError> = web::block(move || {
         let mut conn = pool.get()?;
-        let posts = list_posts(&mut conn, &pagination_data)?;
+        let posts = get_posts(&mut conn, &pagination_data)?;
 
         Ok(posts)
     })
@@ -97,6 +95,7 @@ pub async fn test_pagination(
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[derive(Default)]
 pub struct HandlebarsPaginationResult {
     pub page: i64,
     pub limit: i64,
@@ -152,7 +151,7 @@ pub fn handlebars_pagination_helper(
  <div class=\"px-2\">
     <form method=\"get\" action=\"\" class=\"input-group mb-3\">
         <input name=\"page\" type=\"number\" value=\"{}\" min=\"1\" class=\"form-control\" placeholder=\"Page\"
-            style=\"width: 3rem;\" aria-label=\"Page\" aria-describedby=\"button-addon2\">
+            style=\"width: 4rem;\" aria-label=\"Page\" aria-describedby=\"button-addon2\">
 
         <input name=\"per_page\" type=\"hidden\" value=\"{}\" style=\"display: none;\">
 

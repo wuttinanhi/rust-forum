@@ -17,7 +17,7 @@ use serde_json::json;
 use crate::{
     comments::{repository::get_comments_by_user, types::CommentPublic},
     db::{DbError, DbPool},
-    models::{Comment, Post, UpdateUserNameAndProfilePicture},
+    models::UpdateUserNameAndProfilePicture,
     posts::{repository::get_posts_by_user, types::PostPublic},
     users::{
         constants::SESSION_KEY_USER,
@@ -35,7 +35,9 @@ use crate::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
         http::create_redirect,
-        pagination::QueryPagination,
+        pagination::{
+            build_handlebars_pagination_result, HandlebarsPaginationResult, QueryPagination,
+        },
         users::get_session_user,
     },
     validate_input_user_name, validate_input_user_password,
@@ -385,6 +387,7 @@ pub async fn users_view_profile_route(
     hb: web::Data<Handlebars<'_>>,
     path: web::Path<(i32,)>,
     fetch_mode: OptionalFetchMode,
+    pagination: QueryPagination,
 ) -> actix_web::Result<impl Responder> {
     let user_id = path.into_inner().0;
     let fetch_mode = fetch_mode.0;
@@ -396,9 +399,12 @@ pub async fn users_view_profile_route(
 
     let user_created_posts: Arc<Mutex<Vec<PostPublic>>> = Arc::new(Mutex::new(vec![]));
     let user_created_comments: Arc<Mutex<Vec<CommentPublic>>> = Arc::new(Mutex::new(vec![]));
+    let pagination_result: Arc<Mutex<HandlebarsPaginationResult>> =
+        Arc::new(Mutex::new(HandlebarsPaginationResult::default()));
 
     let user_created_posts_clone = Arc::clone(&user_created_posts);
     let user_created_comments_clone = user_created_comments.clone();
+    let pagination_result_clone = pagination_result.clone();
 
     let user_data = web::block(move || {
         let mut conn = pool.get()?;
@@ -406,21 +412,35 @@ pub async fn users_view_profile_route(
         let user_sanitized = get_user_sanitized_by_id(&mut conn, user_id)?;
 
         if fetch_mode_clone == "posts" {
-            let created_posts =
-                get_posts_by_user(&mut conn, user_id, &QueryPagination { limit: 10, page: 1 })?;
+            let created_posts = get_posts_by_user(&mut conn, user_id, &pagination)?;
 
             user_created_posts_clone
                 .lock()
                 .unwrap()
                 .extend(created_posts.posts);
+
+            let pagination_result = build_handlebars_pagination_result(
+                created_posts.total,
+                pagination.page,
+                pagination.limit,
+            );
+
+            *pagination_result_clone.lock().unwrap() = pagination_result;
         } else if fetch_mode_clone == "comments" {
-            let created_comments =
-                get_comments_by_user(&mut conn, &user_id, &QueryPagination { limit: 10, page: 1 })?;
+            let created_comments = get_comments_by_user(&mut conn, &user_id, &pagination)?;
 
             user_created_comments_clone
                 .lock()
                 .unwrap()
                 .extend(created_comments.comments);
+
+            let pagination_result = build_handlebars_pagination_result(
+                created_comments.total,
+                pagination.page,
+                pagination.limit,
+            );
+
+            *pagination_result_clone.lock().unwrap() = pagination_result;
         } else {
             return Err(DbError::from("no fetch mode was provide"));
         }
@@ -451,6 +471,14 @@ pub async fn users_view_profile_route(
     } else if fetch_mode == "comments" {
         update_handlebars_data(&mut hb_data, "fetch_mode_comments", json!(true));
     }
+
+    let pagination_result_deref = &*(pagination_result.lock().unwrap());
+
+    update_handlebars_data(
+        &mut hb_data,
+        "pagination_result",
+        json!(pagination_result_deref),
+    );
 
     handle_flash_message(&mut hb_data, &session);
 
