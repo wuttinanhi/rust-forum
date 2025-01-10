@@ -1,7 +1,6 @@
 use crate::db::DbError;
 use crate::models::{Comment, NewComment, User};
 use crate::schema::comments as schema_comments;
-use crate::schema::users::dsl::*;
 use crate::utils::pagination::QueryPagination;
 use crate::utils::time::time_to_human_readable;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
@@ -30,7 +29,7 @@ pub fn create_comment(
 
 pub fn get_comment(
     conn: &mut PgConnection,
-    comment_id: &i32,
+    comment_id: i32,
 ) -> actix_web::Result<Comment, DbError> {
     use crate::schema::comments::dsl::*;
     let comment = comments.find(comment_id).first(conn)?;
@@ -53,7 +52,7 @@ pub fn get_comments(
 
 pub fn update_comment(
     conn: &mut PgConnection,
-    target_comment_id: &i32,
+    target_comment_id: i32,
     new_body: &str,
 ) -> actix_web::Result<Comment, DbError> {
     use crate::schema::comments::dsl::*;
@@ -81,9 +80,10 @@ pub fn delete_comment(
 
 pub fn get_comments_with_user(
     conn: &mut PgConnection,
-    parent_post_id: &i32,
+    parent_post_id: i32,
 ) -> actix_web::Result<Vec<CommentPublic>, DbError> {
-    use crate::schema::comments::dsl::{comments, deleted_at, post_id};
+    use crate::schema::comments::dsl::{comments, created_at, deleted_at, post_id};
+    use crate::schema::users::dsl::users;
 
     let comments_joined = comments
         .inner_join(users)
@@ -99,6 +99,7 @@ pub fn get_comments_with_user(
             time_human: time_to_human_readable(comment.created_at),
             comment,
             user,
+            allow_update: false,
         })
         .collect();
 
@@ -112,7 +113,7 @@ pub fn get_comments_by_user(
 ) -> actix_web::Result<ListCommentResult, DbError> {
     let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
 
-    use crate::schema::comments::dsl::{comments, deleted_at, user_id};
+    use crate::schema::comments::dsl::{comments, created_at, deleted_at, user_id};
     use crate::schema::users::dsl::users;
 
     let comments_joined = comments
@@ -131,6 +132,7 @@ pub fn get_comments_by_user(
             time_human: time_to_human_readable(comment.created_at),
             comment,
             user,
+            allow_update: false,
         })
         .collect();
 

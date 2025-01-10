@@ -76,8 +76,8 @@
           </div>
         </div>
 
-        {{#if this.comment.allow_update }}
-        <div class="d-flex flex-row" id="comment_modify_panel">
+        {{#if this.allow_update }}
+        <div class="d-flex flex-row gap-2" id="comment_modify_panel">
           <form method="get" action="/comments/update/{{this.comment.id}}">
             <button class="btn btn-md btn-outline-secondary" type="submit">
               <i class="bi bi-pencil"></i>

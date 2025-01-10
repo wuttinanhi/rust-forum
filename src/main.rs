@@ -11,6 +11,9 @@ use actix_web::{
     App, HttpServer,
 };
 use handlebars::{DirectorySourceOptions, Handlebars};
+use rust_forum::comments::routes::{
+    delete_comment_route, update_comment_post_route, update_comment_route,
+};
 use rust_forum::posts::route::{delete_post_route, update_post_post_route, update_post_route};
 use rust_forum::routes::error::fallback_error_handler;
 use rust_forum::users::route::{
@@ -208,7 +211,11 @@ async fn main() -> std::io::Result<()> {
             .service(delete_post_route)
             .route("", web::to(index_list_posts_route));
 
-        let comments_scope = web::scope("/comments").service(create_comment_submit_route);
+        let comments_scope = web::scope("/comments")
+            .service(create_comment_submit_route)
+            .service(update_comment_route)
+            .service(update_comment_post_route)
+            .service(delete_comment_route);
 
         // --- init app ---
         App::new()

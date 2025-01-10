@@ -1,0 +1,29 @@
+{{#*inline "page"}}
+
+<div class="row mt-5">
+  <div class="col"></div>
+
+  <div class="col-6">
+    <form class="form" method="post" action="{{ form_action }}">
+      <h1 class="h3 mb-5 font-weight-normal">{{ form_header }}</h1>
+
+      <label for="comment_body mt-3">Content</label>
+      <textarea name="body" class="form-floating form-control mt-2" placeholder="comment body" id="comment_body"
+        style="height: 20em">{{ comment.content }}</textarea>
+
+      <div class="d-flex flex-row gap-3 mt-4 justify-content-between">
+        <a href="/posts/{{ comment.post_id }}#{{ comment.id }}" class="btn btn-md btn-outline-secondary">Back</a>
+
+        <button class="btn btn-md btn-primary" type="submit">
+          {{ form_submit_button_text }}
+        </button>
+      </div>
+    </form>
+
+  </div>
+
+  <div class="col"></div>
+</div>
+
+{{/inline}}
+{{> (lookup this "parent")}}

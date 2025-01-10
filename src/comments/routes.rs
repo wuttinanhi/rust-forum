@@ -1,17 +1,26 @@
 use actix_session::Session;
 use actix_web::{
-    post,
+    get, post,
     web::{self},
-    Responder,
+    HttpRequest, HttpResponse, Responder,
 };
+
+use handlebars::Handlebars;
+use serde_json::json;
 
 use crate::{
-    comments::dto::CreateCommentFormData,
-    db::DbPool,
-    utils::{flash::set_flash_message, http::create_redirect, users::get_session_user},
+    db::{DbError, DbPool},
+    utils::{
+        flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
+        handlebars_helper::update_handlebars_data,
+        http::{create_redirect, redirect_back},
+        session::handlebars_add_user,
+        users::get_session_user,
+    },
 };
 
-use super::repository::create_comment;
+use super::dto::{CreateCommentFormData, UpdateCommentFormData};
+use super::repository::{create_comment, delete_comment, get_comment, update_comment};
 
 #[post("/create")]
 pub async fn create_comment_submit_route(
@@ -20,7 +29,7 @@ pub async fn create_comment_submit_route(
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     let user =
-        get_session_user(&session).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
+        get_session_user(&session).map_err(actix_web::error::ErrorInternalServerError)?;
 
     let post_id = form.post_id;
 
@@ -42,6 +51,133 @@ pub async fn create_comment_submit_route(
             set_flash_message(&session, "error", "Error creating comment!")?;
 
             Ok(create_redirect(&redirect_url))
+        }
+    }
+}
+
+#[get("/update/{comment_id}")]
+pub async fn update_comment_route(
+    req: HttpRequest,
+    pool: actix_web::web::Data<DbPool>,
+    hb: web::Data<Handlebars<'_>>,
+    session: Session,
+    path: web::Path<i32>,
+) -> actix_web::Result<impl Responder> {
+    let session_user = get_session_user(&session)?;
+
+    let comment_id = path.into_inner();
+
+    let comment = web::block(move || {
+        let mut conn = pool.get()?;
+        get_comment(&mut conn, comment_id)
+    })
+    .await?
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    // check if user able to update comment
+    if comment.user_id != session_user.id {
+        set_flash_message(&session, FLASH_ERROR, "Error : User does not own comment")?;
+        return Ok(redirect_back(&req));
+    }
+
+    let mut data = json!({
+        "parent": "base",
+        "title": format!("Update comment : #{}", comment.id),
+        "form_header": format!("Update comment : #{}", comment.id),
+        "form_action": format!("/comments/update/{}", comment.id),
+        "form_submit_button_text": "Update",
+    });
+
+    update_handlebars_data(&mut data, "comment", json!(comment));
+    handle_flash_message(&mut data, &session);
+    handlebars_add_user(&session, &mut data)?;
+
+    let body = hb.render("comments/form", &data).unwrap();
+
+    Ok(HttpResponse::Ok().body(body))
+}
+
+#[post("/update/{post_id}")]
+pub async fn update_comment_post_route(
+    req: HttpRequest,
+    form: web::Form<UpdateCommentFormData>,
+    pool: web::Data<DbPool>,
+    path: web::Path<i32>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    let comment_id = path.into_inner();
+    let session_user = get_session_user(&session)?;
+
+    let update_comment_result = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let comment = get_comment(&mut conn, comment_id)
+            .map_err(|e| DbError::from(format!("failed to get comment {}", e)))?;
+
+        if comment.user_id != session_user.id {
+            return Err(DbError::from("Error : User does not own comment"));
+        }
+
+        update_comment(&mut conn, comment.id, &form.body)
+    })
+    .await?;
+
+    match update_comment_result {
+        Ok(comment) => {
+            set_flash_message(&session, FLASH_SUCCESS, "comment updated")?;
+            Ok(create_redirect(&format!(
+                "/posts/{}#{}",
+                comment.post_id, comment.id
+            )))
+        }
+
+        Err(why) => {
+            set_flash_message(&session, FLASH_ERROR, &why.to_string())?;
+
+            Ok(redirect_back(&req))
+        }
+    }
+}
+
+#[post("/delete/{comment_id}")]
+pub async fn delete_comment_route(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    path: web::Path<i32>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    let comment_id = path.into_inner();
+    let session_user = get_session_user(&session)?;
+
+    let delete_comment_result = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let comment = get_comment(&mut conn, comment_id)
+            .map_err(|e| DbError::from(format!("failed to get comment {}", e)))?;
+
+        if comment.user_id != session_user.id {
+            return Err(DbError::from("Error : User does not own comment"));
+        }
+
+        delete_comment(&mut conn, comment.id)?;
+
+        Ok(comment)
+    })
+    .await?;
+
+    match delete_comment_result {
+        Ok(comment) => {
+            set_flash_message(&session, FLASH_SUCCESS, "comment deleted")?;
+            Ok(create_redirect(&format!(
+                "/posts/{}#{}",
+                comment.post_id, comment.id
+            )))
+        }
+
+        Err(why) => {
+            set_flash_message(&session, FLASH_ERROR, &why.to_string())?;
+
+            Ok(redirect_back(&req))
         }
     }
 }

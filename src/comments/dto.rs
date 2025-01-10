@@ -5,3 +5,8 @@ pub struct CreateCommentFormData {
     pub post_id: i32,
     pub body: String,
 }
+
+#[derive(Deserialize)]
+pub struct UpdateCommentFormData {
+    pub body: String,
+}

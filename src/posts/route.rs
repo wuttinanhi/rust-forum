@@ -100,7 +100,7 @@ pub async fn view_post_route(
         let post = get_post_with_user(&mut conn, post_id)
             .map_err(|e| DbError::from(format!("Failed to get post: {}", e)))?;
 
-        let comments = get_comments_with_user(&mut conn, &post.post.id)
+        let comments = get_comments_with_user(&mut conn, post.post.id)
             .map_err(|e| DbError::from(format!("Failed to get comments: {}", e)))?;
 
         Ok((post, comments))
@@ -108,12 +108,18 @@ pub async fn view_post_route(
     .await?;
 
     match data_result {
-        Ok((mut post, comments)) => {
+        Ok((mut post, mut comments)) => {
             // if post.user_id is equal session user id then allow update
             if let Ok(user) = session_user {
                 if post.user.id == user.id {
                     post.allow_update = true;
                 }
+
+                comments.iter_mut().for_each(|c| {
+                    if c.user.id == user.id {
+                        c.allow_update = true;
+                    }
+                });
             }
 
             update_handlebars_data(&mut hb_data, "title", json!(post.post.title));
@@ -185,48 +191,6 @@ pub async fn index_list_posts_route(
     Ok(HttpResponse::Ok().body(body))
 }
 
-#[post("/delete/{post_id}")]
-pub async fn delete_post_route(
-    req: HttpRequest,
-    pool: web::Data<DbPool>,
-    path: web::Path<i32>,
-    session: Session,
-) -> actix_web::Result<impl Responder> {
-    let post_id = path.into_inner();
-    let session_user = get_session_user(&session)?;
-
-    let delete_post_result = web::block(move || {
-        let mut conn = pool.get()?;
-
-        let post = get_post(&mut conn, post_id)
-            .map_err(|e| DbError::from(format!("failed to get post {}", e)))?;
-
-        if post.user_id != session_user.id {
-            return Err(DbError::from("User does not own post"));
-        }
-
-        delete_post(&mut conn, post_id)
-    })
-    .await?;
-
-    match delete_post_result {
-        Ok(_) => {
-            set_flash_message(&session, FLASH_SUCCESS, "Post deleted")?;
-            Ok(create_redirect("/"))
-        }
-
-        Err(why) => {
-            set_flash_message(
-                &session,
-                FLASH_ERROR,
-                &format!("Failed to delete post {}", why),
-            )?;
-
-            Ok(redirect_back(&req))
-        }
-    }
-}
-
 #[get("/update/{post_id}")]
 pub async fn update_post_route(
     req: HttpRequest,
@@ -295,9 +259,9 @@ pub async fn update_post_post_route(
     .await?;
 
     match update_post_result {
-        Ok(_) => {
+        Ok(post) => {
             set_flash_message(&session, FLASH_SUCCESS, "Post updated")?;
-            Ok(create_redirect("/"))
+            Ok(create_redirect(&format!("/posts/{}", post.id)))
         }
 
         Err(why) => {
@@ -305,6 +269,48 @@ pub async fn update_post_post_route(
                 &session,
                 FLASH_ERROR,
                 &format!("Failed to update post {}", why),
+            )?;
+
+            Ok(redirect_back(&req))
+        }
+    }
+}
+
+#[post("/delete/{post_id}")]
+pub async fn delete_post_route(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    path: web::Path<i32>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    let post_id = path.into_inner();
+    let session_user = get_session_user(&session)?;
+
+    let delete_post_result = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let post = get_post(&mut conn, post_id)
+            .map_err(|e| DbError::from(format!("failed to get post {}", e)))?;
+
+        if post.user_id != session_user.id {
+            return Err(DbError::from("User does not own post"));
+        }
+
+        delete_post(&mut conn, post_id)
+    })
+    .await?;
+
+    match delete_post_result {
+        Ok(_) => {
+            set_flash_message(&session, FLASH_SUCCESS, "Post deleted")?;
+            Ok(create_redirect("/"))
+        }
+
+        Err(why) => {
+            set_flash_message(
+                &session,
+                FLASH_ERROR,
+                &format!("Failed to delete post {}", why),
             )?;
 
             Ok(redirect_back(&req))

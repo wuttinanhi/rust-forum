@@ -8,6 +8,7 @@ pub struct CommentPublic {
     pub comment: Comment,
     pub user: User,
     pub time_human: String,
+    pub allow_update: bool,
 }
 
 pub struct ListCommentResult {
