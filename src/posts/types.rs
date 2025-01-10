@@ -8,6 +8,7 @@ pub struct PostPublic {
     pub post: Post,
     pub user: User,
     pub time_human: String,
+    pub allow_update: bool,
 }
 
 pub struct ListPostResult {

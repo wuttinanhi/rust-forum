@@ -101,6 +101,7 @@ pub fn get_posts_with_user(
             user,
             time_human: time_to_human_readable(post.created_at),
             post,
+            allow_update: false,
         })
         .collect();
 
@@ -141,6 +142,7 @@ pub fn get_posts_by_user(
             user,
             time_human: time_to_human_readable(post.created_at),
             post,
+            allow_update: false,
         })
         .collect();
 
@@ -172,6 +174,7 @@ pub fn get_post_with_user(
         user,
         time_human: time_to_human_readable(post.created_at),
         post,
+        allow_update: false,
     };
 
     Ok(post_public)

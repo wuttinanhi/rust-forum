@@ -1,8 +1,6 @@
 use actix_session::Session;
 use actix_web::{
-    get,
-    http::header,
-    post,
+    get, post,
     web::{self},
     HttpRequest, HttpResponse, Responder,
 };
@@ -13,11 +11,15 @@ use serde_json::json;
 use crate::{
     comments::{repository::get_comments_with_user, types::CommentPublic},
     db::{DbError, DbPool},
-    posts::{dto::CreatePostFormData, repository::delete_post, types::PostPublic},
+    posts::{
+        dto::{CreatePostFormData, UpdatePostFormData},
+        repository::{delete_post, update_post},
+        types::PostPublic,
+    },
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
-        http::create_redirect,
+        http::{create_redirect, redirect_back},
         pagination::{build_handlebars_pagination_result, QueryPagination},
         session::handlebars_add_user,
         users::get_session_user,
@@ -34,14 +36,17 @@ pub async fn create_post_route(
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     let mut data = json!({
-        "parent": "base"
+        "parent": "base",
+        "title": "Create new post",
+        "form_action": "/posts/create",
+        "form_header": "Create new post",
+        "form_submit_button_text": "Create",
     });
 
     handle_flash_message(&mut data, &session);
-    update_handlebars_data(&mut data, "title", json!("Create new post"));
     handlebars_add_user(&session, &mut data)?;
 
-    let body = hb.render("posts/create", &data).unwrap();
+    let body = hb.render("posts/form", &data).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
 }
@@ -86,6 +91,7 @@ pub async fn view_post_route(
 ) -> actix_web::Result<impl Responder> {
     let post_id = path.into_inner();
     let mut hb_data = json!({ "parent": "base" });
+    let session_user = get_session_user(&session);
 
     // Combine database operations into single block
     let data_result: Result<(PostPublic, Vec<CommentPublic>), DbError> = web::block(move || {
@@ -102,7 +108,14 @@ pub async fn view_post_route(
     .await?;
 
     match data_result {
-        Ok((post, comments)) => {
+        Ok((mut post, comments)) => {
+            // if post.user_id is equal session user id then allow update
+            if let Ok(user) = session_user {
+                if post.user.id == user.id {
+                    post.allow_update = true;
+                }
+            }
+
             update_handlebars_data(&mut hb_data, "title", json!(post.post.title));
             update_handlebars_data(&mut hb_data, "post", json!(post));
             update_handlebars_data(&mut hb_data, "comments", json!(comments));
@@ -119,7 +132,7 @@ pub async fn view_post_route(
         }
     }
 
-    handlebars_add_user(&session, &mut hb_data)?;
+    let _ = handlebars_add_user(&session, &mut hb_data);
     handle_flash_message(&mut hb_data, &session);
 
     let body = hb
@@ -203,19 +216,98 @@ pub async fn delete_post_route(
         }
 
         Err(why) => {
-            let previous_url = req
-                .headers()
-                .get(header::REFERER)
-                .and_then(|h| h.to_str().ok())
-                .unwrap_or("/");
-
             set_flash_message(
                 &session,
                 FLASH_ERROR,
                 &format!("Failed to delete post {}", why),
             )?;
 
-            Ok(create_redirect(previous_url))
+            Ok(redirect_back(&req))
+        }
+    }
+}
+
+#[get("/update/{post_id}")]
+pub async fn update_post_route(
+    req: HttpRequest,
+    pool: web::Data<DbPool>,
+    hb: web::Data<Handlebars<'_>>,
+    session: Session,
+    path: web::Path<i32>,
+) -> actix_web::Result<impl Responder> {
+    let session_user = get_session_user(&session)?;
+
+    let post_id = path.into_inner();
+
+    let post = web::block(move || {
+        let mut conn = pool.get()?;
+        get_post_with_user(&mut conn, post_id)
+    })
+    .await?
+    .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    // check if user able to update post
+    if post.user.id != session_user.id {
+        set_flash_message(&session, FLASH_ERROR, "User does not own post")?;
+        return Ok(redirect_back(&req));
+    }
+
+    let mut data = json!({
+        "parent": "base",
+        "title": format!("Update post : {}", post.post.title),
+        "form_header": format!("Update post : {}", post.post.title),
+          "form_action": format!("/posts/update/{}", post.post.id),
+        "form_submit_button_text": "Update",
+    });
+
+    update_handlebars_data(&mut data, "post", json!(post.post));
+    handle_flash_message(&mut data, &session);
+    handlebars_add_user(&session, &mut data)?;
+
+    let body = hb.render("posts/form", &data).unwrap();
+
+    Ok(HttpResponse::Ok().body(body))
+}
+
+#[post("/update/{post_id}")]
+pub async fn update_post_post_route(
+    req: HttpRequest,
+    form: web::Form<UpdatePostFormData>,
+    pool: web::Data<DbPool>,
+    path: web::Path<i32>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    let post_id = path.into_inner();
+    let session_user = get_session_user(&session)?;
+
+    let update_post_result = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let fetch_result = get_post_with_user(&mut conn, post_id)
+            .map_err(|e| DbError::from(format!("failed to get post {}", e)))?;
+
+        if fetch_result.user.id != session_user.id {
+            return Err(DbError::from("User does not own post"));
+        }
+
+        update_post(&mut conn, fetch_result.post.id, &form.title, &form.body)
+    })
+    .await?;
+
+    match update_post_result {
+        Ok(_) => {
+            set_flash_message(&session, FLASH_SUCCESS, "Post updated")?;
+            Ok(create_redirect("/"))
+        }
+
+        Err(why) => {
+            set_flash_message(
+                &session,
+                FLASH_ERROR,
+                &format!("Failed to update post {}", why),
+            )?;
+
+            Ok(redirect_back(&req))
         }
     }
 }

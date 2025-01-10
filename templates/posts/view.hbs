@@ -29,11 +29,21 @@
         </div>
       </div>
 
-      <form method="post" action="/posts/delete/{{post.post.id}}">
-        <button class="btn btn-md btn-outline-secondary" type="submit">
-          <i class="bi bi-trash"></i>
-        </button>
-      </form>
+      {{#if post.allow_update }}
+      <div class="d-flex flex-row gap-2" id="post_modify_panel">
+        <form method="get" action="/posts/update/{{post.post.id}}">
+          <button class="btn btn-md btn-outline-secondary" type="submit">
+            <i class="bi bi-pencil"></i>
+          </button>
+        </form>
+
+        <form method="post" action="/posts/delete/{{post.post.id}}">
+          <button class="btn btn-md btn-outline-secondary" type="submit">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </div>
+      {{/if}}
     </div>
   </div>
 </div>
@@ -66,11 +76,21 @@
           </div>
         </div>
 
-        <form method="post" action="/comments/delete/{{this.comment.id}}">
-          <button class="btn btn-md btn-outline-secondary" type="submit">
-            <i class="bi bi-trash"></i>
-          </button>
-        </form>
+        {{#if this.comment.allow_update }}
+        <div class="d-flex flex-row" id="comment_modify_panel">
+          <form method="get" action="/comments/update/{{this.comment.id}}">
+            <button class="btn btn-md btn-outline-secondary" type="submit">
+              <i class="bi bi-pencil"></i>
+            </button>
+          </form>
+
+          <form method="post" action="/comments/delete/{{this.comment.id}}">
+            <button class="btn btn-md btn-outline-secondary" type="submit">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+        {{/if}}
       </div>
 
     </div>

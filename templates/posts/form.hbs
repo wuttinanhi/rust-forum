@@ -4,18 +4,18 @@
   <div class="col"></div>
 
   <div class="col-6">
-    <form class="form" method="post" action="create">
-      <h1 class="h3 mb-3 font-weight-normal">Create new Post</h1>
+    <form class="form" method="post" action="{{ form_action }}">
+      <h1 class="h3 mb-3 font-weight-normal">{{ form_header }}</h1>
 
       <label for="post_title">Post title</label>
-      <input name="title" type="text" id="post_title" class="form-control" placeholder="Post title" required
-        autofocus />
+      <input name="title" type="text" id="post_title" class="form-control" placeholder="Post title" required autofocus
+        value="{{ post.title }}" />
 
       <br />
 
       <label for="post_body mt-3">Content</label>
       <textarea name="body" class="form-floating form-control mt-2" placeholder="post body" id="post_body"
-        style="height: 20em"></textarea>
+        style="height: 20em">{{ post.body }}</textarea>
 
       {{!-- <div class="form-floating">
       </div> --}}
@@ -24,7 +24,7 @@
         <a href="/" class="btn btn-md btn-outline-secondary">Back</a>
 
         <button class="btn btn-md btn-primary" type="submit">
-          Post
+          {{ form_submit_button_text }}
         </button>
       </div>
     </form>
