@@ -190,9 +190,7 @@ pub async fn delete_post_route(
             return Err(DbError::from("User does not own post"));
         }
 
-        Ok(())
-
-        // delete_post(&mut conn, post_id)
+        delete_post(&mut conn, post_id)
     })
     .await?;
 
