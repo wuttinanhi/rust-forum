@@ -1,101 +1,103 @@
 {{#*inline "page"}}
 
 {{ #if post }}
-<div class="row mt-5">
-  <div class="col"></div>
-  <div class="col-6">
+<h1>{{post.post.title}}</h1>
 
-    <h1>{{post.post.title}}</h1>
-
-    <div class="card bg-light my-5">
-      {{!-- <div class="card-header">Header</div> --}}
-      <div class="card-body">
-        <p>
-          {{post.post.body}}
-        </p>
-      </div>
-
-      <div class="card-footer mx-0 my-0 px-2 pt-2">
-        <div class="d-flex flex-row justify-content-between align-items-baseline">
-          <div class="d-flex flex-row gap-2">
-            <div>
-              <a href="/posts/{{post.post.id}}">#{{post.post.id}}</a>
-            </div>
-
-            <div>
-              <i class="bi bi-person"></i>
-              <a href="/users/profile/{{post.user.id}}">{{post.user.name}}</a>
-            </div>
-
-            <div>
-              <i class="bi bi-calendar"></i>
-              <span class="mx-2">{{post.time_human}}</span>
-            </div>
-          </div>
-
-          <form method="post" action="/posts/delete/{{post.post.id}}">
-            <button class="btn btn-md btn-outline-secondary" type="submit">
-              <i class="bi bi-trash"></i>
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div id="comments" class="my-3">
-      <h5 class="text-secondary">Comments:</h5>
-
-      {{#each comments}}
-      <div class="card my-3" id="{{this.comment.id}}">
-        <div class="card-body">
-          <p>{{this.comment.content}}</p>
-        </div>
-
-        <div class="card-footer">
-          <div class="d-flex flex-row gap-2 mt-2 mb-0 py-0">
-            <div>
-              <a href="/posts/{{this.comment.post_id}}#{{this.comment.id}}">#{{this.comment.id}}</a>
-            </div>
-
-            <div>
-              <i class="bi bi-person"></i>
-              <a href="/users/profile/{{this.user.id}}">{{this.user.name}}</a>
-            </div>
-
-            <div>
-              <i class="bi bi-calendar"></i>
-              <span class="mx-2">{{this.time_human}}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      {{/each}}
-    </div>
-
-    <hr class="mt-5 my-3">
-
-    {{ #if user }}
-    <form class="form" method="post" action="/comments/create">
-      <h1 class="h3 mb-3 font-weight-normal">Comment</h1>
-
-      <div class="form-floating my-2">
-        <textarea name="body" class="form-control" placeholder="New comment" id="comment_body"
-          style="height: 10em"></textarea>
-        <label for="comment_body"></label>
-      </div>
-
-      <input type="hidden" name="post_id" id="post_id" value="{{post.post.id}}" />
-
-      <button class="btn btn-lg btn-primary btn-block" type="submit">
-        Comment
-      </button>
-    </form>
-    {{/if}}
-
-
+<div class="card bg-light my-5">
+  {{!-- <div class="card-header">Header</div> --}}
+  <div class="card-body">
+    <p>
+      {{post.post.body}}
+    </p>
   </div>
-  <div class="col"></div>
+
+  <div class="card-footer mx-0 my-0 px-3 pt-2">
+    <div class="d-flex flex-row justify-content-between align-items-baseline">
+      <div class="d-flex flex-row gap-2">
+        <div>
+          <a href="/posts/{{post.post.id}}">#{{post.post.id}}</a>
+        </div>
+
+        <div>
+          <i class="bi bi-person"></i>
+          <a href="/users/profile/{{post.user.id}}">{{post.user.name}}</a>
+        </div>
+
+        <div>
+          <i class="bi bi-calendar"></i>
+          <span class="mx-2">{{post.time_human}}</span>
+        </div>
+      </div>
+
+      <form method="post" action="/posts/delete/{{post.post.id}}">
+        <button class="btn btn-md btn-outline-secondary" type="submit">
+          <i class="bi bi-trash"></i>
+        </button>
+      </form>
+    </div>
+  </div>
 </div>
+
+<div id="comments" class="my-3">
+  <h5 class="text-secondary">Comments:</h5>
+
+  {{#each comments}}
+  <div class="card my-3" id="{{this.comment.id}}">
+    <div class="card-body">
+      <p>{{this.comment.content}}</p>
+    </div>
+
+    <div class="card-footer">
+
+      <div class="d-flex flex-row justify-content-between align-items-baseline my-0 py-0">
+        <div class="d-flex flex-row gap-2">
+          <div>
+            <a href="/posts/{{this.comment.post_id}}#{{this.comment.id}}">#{{this.comment.id}}</a>
+          </div>
+
+          <div>
+            <i class="bi bi-person"></i>
+            <a href="/users/profile/{{this.user.id}}">{{this.user.name}}</a>
+          </div>
+
+          <div>
+            <i class="bi bi-calendar"></i>
+            <span class="mx-2">{{this.time_human}}</span>
+          </div>
+        </div>
+
+        <form method="post" action="/comments/delete/{{this.comment.id}}">
+          <button class="btn btn-md btn-outline-secondary" type="submit">
+            <i class="bi bi-trash"></i>
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+  {{/each}}
+</div>
+
+<hr class="mt-5 my-3">
+
+{{ #if user }}
+<form class="form" method="post" action="/comments/create">
+  <h1 class="h3 mb-3 font-weight-normal">Comment</h1>
+
+  <div class="form-floating my-2">
+    <textarea name="body" class="form-control" placeholder="New comment" id="comment_body"
+      style="height: 10em"></textarea>
+    <label for="comment_body"></label>
+  </div>
+
+  <input type="hidden" name="post_id" id="post_id" value="{{post.post.id}}" />
+
+  <button class="btn btn-lg btn-primary btn-block" type="submit">
+    Comment
+  </button>
+</form>
+{{/if}}
+
 {{/if}}
 
 {{/inline}}
