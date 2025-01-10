@@ -1,5 +1,4 @@
 use actix_session::Session;
-use actix_web::error::ErrorInternalServerError;
 
 use crate::users::{constants::SESSION_KEY_USER, types::UserPublic};
 
@@ -12,7 +11,7 @@ pub fn get_session_user(session: &Session) -> Result<UserPublic, actix_web::Erro
             user_profile_picture_url: user.user_profile_picture_url,
         })
     } else {
-        Err(ErrorInternalServerError("Failed to get session user!"))
+        Err(actix_web::error::ErrorUnauthorized("Unauthorized"))
     }
 }
 

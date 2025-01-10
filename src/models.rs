@@ -82,6 +82,7 @@ pub struct User {
     pub created_at: chrono::NaiveDateTime,
     pub updated_at: chrono::NaiveDateTime,
     pub user_profile_picture_url: Option<String>,
+    pub role: String,
 }
 
 #[derive(Insertable)]

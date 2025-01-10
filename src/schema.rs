@@ -37,6 +37,8 @@ diesel::table! {
         created_at -> Timestamp,
         updated_at -> Timestamp,
         user_profile_picture_url -> Nullable<Varchar>,
+        #[max_length = 255]
+        role -> Varchar,
     }
 }
 

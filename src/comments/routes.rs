@@ -19,7 +19,8 @@ pub async fn create_comment_submit_route(
     form: web::Form<CreateCommentFormData>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    let user = get_session_user(&session)?;
+    let user =
+        get_session_user(&session).map_err(|e| actix_web::error::ErrorInternalServerError(e))?;
 
     let post_id = form.post_id;
 

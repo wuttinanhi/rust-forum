@@ -29,7 +29,7 @@ use crate::{
             create_user, get_user_by_id, get_user_sanitized_by_id, login_user, update_user_data,
             update_user_password, validate_user_password,
         },
-        types::{user_to_user_public, UserPublic},
+        types::user_to_user_public,
     },
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
@@ -51,7 +51,7 @@ pub async fn users_login_route(
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    if session.get::<UserPublic>(SESSION_KEY_USER)?.is_some() {
+    if get_session_user(&session).is_ok() {
         set_flash_message(&session, "error", "User already logged in!")?;
 
         return Ok(create_redirect("/"));
@@ -117,7 +117,7 @@ pub async fn users_register_route(
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    if session.get::<UserPublic>(SESSION_KEY_USER)?.is_some() {
+    if get_session_user(&session).is_ok() {
         set_flash_message(&session, "error", "User already logged in!")?;
 
         return Ok(create_redirect("/"));
@@ -190,7 +190,6 @@ pub async fn users_settings_route(
         let mut conn = pool.get()?;
 
         // we need to get updated data from db
-
         get_user_sanitized_by_id(&mut conn, session_user.id)
             .map_err(|_| DbError::from("User by session not found"))
     })
@@ -490,7 +489,7 @@ pub async fn users_view_profile_route(
     );
 
     handle_flash_message(&mut hb_data, &session);
-    handlebars_add_user(&session, &mut hb_data);
+    handlebars_add_user(&session, &mut hb_data)?;
 
     let body = hb
         .render("users/profile", &hb_data)

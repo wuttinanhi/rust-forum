@@ -37,9 +37,9 @@ pub async fn create_post_route(
         "parent": "base"
     });
 
-    handlebars_add_user(&session, &mut data);
     handle_flash_message(&mut data, &session);
     update_handlebars_data(&mut data, "title", json!("Create new post"));
+    handlebars_add_user(&session, &mut data)?;
 
     let body = hb.render("posts/create", &data).unwrap();
 
@@ -119,7 +119,7 @@ pub async fn view_post_route(
         }
     }
 
-    handlebars_add_user(&session, &mut hb_data);
+    handlebars_add_user(&session, &mut hb_data)?;
     handle_flash_message(&mut hb_data, &session);
 
     let body = hb
@@ -163,9 +163,9 @@ pub async fn index_list_posts_route(
         Err(_) => set_flash_message(&session, "error", "failed to list posts")?,
     }
 
-    handlebars_add_user(&session, &mut data);
     handle_flash_message(&mut data, &session);
     update_handlebars_data(&mut data, "title", json!("Posts"));
+    let _ = handlebars_add_user(&session, &mut data);
 
     let body = hb.render("posts/index", &data).unwrap();
 
