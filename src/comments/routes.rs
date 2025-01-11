@@ -9,7 +9,9 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
+    comments::repository::get_page_where_comment_at,
     db::{DbError, DbPool},
+    models::Comment,
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
@@ -28,20 +30,26 @@ pub async fn create_comment_submit_route(
     form: web::Form<CreateCommentFormData>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    let user =
-        get_session_user(&session).map_err(actix_web::error::ErrorInternalServerError)?;
+    let user = get_session_user(&session).map_err(actix_web::error::ErrorInternalServerError)?;
 
     let post_id = form.post_id;
 
-    let create_comment_result = web::block(move || {
+    let result: Result<(Comment, i64), DbError> = web::block(move || {
         let mut conn = pool.get()?;
-        create_comment(&mut conn, &user.id, &form.post_id, &form.body)
+        let comment = create_comment(&mut conn, &user.id, &form.post_id, &form.body)?;
+
+        let target_comment_page = get_page_where_comment_at(&mut conn, &comment, 10)?;
+
+        Ok((comment, target_comment_page))
     })
     .await?;
 
-    match create_comment_result {
-        Ok(new_comment) => {
-            let redirect_url = format!("/posts/{}#{}", new_comment.post_id, new_comment.id);
+    match result {
+        Ok((comment, target_comment_page)) => {
+            let redirect_url = format!(
+                "/posts/{}?page={}&per_page={}#{}",
+                comment.post_id, target_comment_page, 10, comment.id
+            );
             set_flash_message(&session, "success", "Created comment!")?;
             Ok(create_redirect(&redirect_url))
         }
@@ -108,7 +116,7 @@ pub async fn update_comment_post_route(
     let comment_id = path.into_inner();
     let session_user = get_session_user(&session)?;
 
-    let update_comment_result = web::block(move || {
+    let result: Result<(Comment, i64), DbError> = web::block(move || {
         let mut conn = pool.get()?;
 
         let comment = get_comment(&mut conn, comment_id)
@@ -118,17 +126,23 @@ pub async fn update_comment_post_route(
             return Err(DbError::from("Error : User does not own comment"));
         }
 
-        update_comment(&mut conn, comment.id, &form.body)
+        let comment = update_comment(&mut conn, comment.id, &form.body)?;
+
+        let target_comment_page = get_page_where_comment_at(&mut conn, &comment, 10)?;
+
+        Ok((comment, target_comment_page))
     })
     .await?;
 
-    match update_comment_result {
-        Ok(comment) => {
+    match result {
+        Ok((comment, target_comment_page)) => {
             set_flash_message(&session, FLASH_SUCCESS, "comment updated")?;
-            Ok(create_redirect(&format!(
-                "/posts/{}#{}",
-                comment.post_id, comment.id
-            )))
+
+            let redirect_url = format!(
+                "/posts/{}?page={}&per_page={}#{}",
+                comment.post_id, target_comment_page, 10, comment.id
+            );
+            Ok(create_redirect(&redirect_url))
         }
 
         Err(why) => {
@@ -149,7 +163,7 @@ pub async fn delete_comment_route(
     let comment_id = path.into_inner();
     let session_user = get_session_user(&session)?;
 
-    let delete_comment_result = web::block(move || {
+    let delete_comment_result: Result<(Comment, i64), DbError> = web::block(move || {
         let mut conn = pool.get()?;
 
         let comment = get_comment(&mut conn, comment_id)
@@ -161,17 +175,21 @@ pub async fn delete_comment_route(
 
         delete_comment(&mut conn, comment.id)?;
 
-        Ok(comment)
+        let target_comment_page = get_page_where_comment_at(&mut conn, &comment, 10)?;
+
+        Ok((comment, target_comment_page))
     })
     .await?;
 
     match delete_comment_result {
-        Ok(comment) => {
+        Ok((comment, target_comment_page)) => {
             set_flash_message(&session, FLASH_SUCCESS, "comment deleted")?;
-            Ok(create_redirect(&format!(
-                "/posts/{}#{}",
-                comment.post_id, comment.id
-            )))
+
+            let redirect_url = format!(
+                "/posts/{}?page={}&per_page={}#{}",
+                comment.post_id, target_comment_page, 10, comment.id
+            );
+            Ok(create_redirect(&redirect_url))
         }
 
         Err(why) => {

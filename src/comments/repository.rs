@@ -157,3 +157,26 @@ pub fn get_comments_by_user(
         total,
     })
 }
+
+pub fn get_page_where_comment_at(
+    conn: &mut PgConnection,
+    target_comment: &Comment,
+    page_limit: i64,
+) -> Result<i64, DbError> {
+    use schema_comments::dsl::{deleted_at, id, post_id};
+
+    let nth_row_comment = schema_comments::table
+        .filter(post_id.eq(target_comment.post_id))
+        .filter(deleted_at.is_null())
+        .order(id.asc())
+        .select(id)
+        .load::<i32>(conn)?
+        .iter()
+        .position(|&comment_id_value| comment_id_value == target_comment.id)
+        .map(|pos| pos as i64 + 1)
+        .unwrap_or(0);
+
+    let page = (nth_row_comment as f64 / page_limit as f64).ceil() as i64;
+
+    Ok(page)
+}
