@@ -30,7 +30,10 @@ pub fn create_post(
 }
 
 pub fn get_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<Post, DbError> {
-    let post = posts.find(post_id).first(conn)?;
+    let post = posts
+        .find(post_id)
+        .filter(deleted_at.is_null())
+        .first(conn)?;
 
     Ok(post)
 }
@@ -162,6 +165,7 @@ pub fn get_post_with_user(
     let (post, user) = posts
         .inner_join(schema_users::table)
         .filter(schema_posts::id.eq(post_id))
+        .filter(schema_posts::deleted_at.is_null())
         .first::<(Post, User)>(conn)?;
 
     let post_public = PostPublic {

@@ -32,7 +32,10 @@ pub fn get_comment(
     comment_id: i32,
 ) -> actix_web::Result<Comment, DbError> {
     use crate::schema::comments::dsl::*;
-    let comment = comments.find(comment_id).first(conn)?;
+    let comment = comments
+        .find(comment_id)
+        .filter(deleted_at.is_null())
+        .first(conn)?;
     Ok(comment)
 }
 
@@ -44,6 +47,7 @@ pub fn get_comments(
 
     let comments_vec = comments
         .filter(post_id.eq(parent_post_id))
+        .filter(deleted_at.is_null())
         .order(created_at.desc())
         .load(conn)?;
 

@@ -79,8 +79,15 @@ pub async fn update_comment_route(
         let mut conn = pool.get()?;
         get_comment(&mut conn, comment_id)
     })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
+    .await?;
+
+    let comment = match comment {
+        Ok(comment) => comment,
+        Err(why) => {
+            set_flash_message(&session, FLASH_ERROR, &why.to_string())?;
+            return Ok(redirect_back(&req));
+        }
+    };
 
     // check if user able to update comment
     if comment.user_id != session_user.id {

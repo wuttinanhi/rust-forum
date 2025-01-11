@@ -1,101 +1,83 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in library 'rust_forum'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=rust-forum"
-                ],
-                "filter": {
-                    "name": "rust_forum",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'rust-forum'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=rust-forum",
-                    "--package=rust-forum"
-                ],
-                "filter": {
-                    "name": "rust-forum",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'rust-forum'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=rust-forum",
-                    "--package=rust-forum"
-                ],
-                "filter": {
-                    "name": "rust-forum",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'write_post'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=write_post",
-                    "--package=rust-forum"
-                ],
-                "filter": {
-                    "name": "write_post",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'write_post'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=write_post",
-                    "--package=rust-forum"
-                ],
-                "filter": {
-                    "name": "write_post",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'rust_forum'",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=rust-forum"],
+        "filter": {
+          "name": "rust_forum",
+          "kind": "lib"
         }
-    ]
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'rustforum'",
+      "cargo": {
+        "args": ["build", "--bin=rustforum", "--package=rust-forum"],
+        "filter": {
+          "name": "rustforum",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'rustforum'",
+      "cargo": {
+        "args": ["test", "--no-run", "--bin=rustforum", "--package=rust-forum"],
+        "filter": {
+          "name": "rustforum",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'write_post'",
+      "cargo": {
+        "args": ["build", "--bin=write_post", "--package=rust-forum"],
+        "filter": {
+          "name": "write_post",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'write_post'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=write_post",
+          "--package=rust-forum"
+        ],
+        "filter": {
+          "name": "write_post",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
 }
