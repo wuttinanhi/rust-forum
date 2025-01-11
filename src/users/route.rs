@@ -422,11 +422,8 @@ pub async fn users_view_profile_route(
                 .unwrap()
                 .extend(created_posts.posts);
 
-            let pagination_result = build_handlebars_pagination_result(
-                created_posts.total,
-                pagination.page,
-                pagination.limit,
-            );
+            let pagination_result =
+                build_handlebars_pagination_result(created_posts.total, &pagination);
 
             *pagination_result_clone.lock().unwrap() = pagination_result;
         } else if fetch_mode_clone == "comments" {
@@ -437,11 +434,8 @@ pub async fn users_view_profile_route(
                 .unwrap()
                 .extend(created_comments.comments);
 
-            let pagination_result = build_handlebars_pagination_result(
-                created_comments.total,
-                pagination.page,
-                pagination.limit,
-            );
+            let pagination_result =
+                build_handlebars_pagination_result(created_comments.total, &pagination);
 
             *pagination_result_clone.lock().unwrap() = pagination_result;
         } else {

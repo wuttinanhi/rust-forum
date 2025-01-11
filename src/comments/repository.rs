@@ -81,7 +81,8 @@ pub fn delete_comment(
 pub fn get_comments_with_user(
     conn: &mut PgConnection,
     parent_post_id: i32,
-) -> actix_web::Result<Vec<CommentPublic>, DbError> {
+    pagination: &QueryPagination,
+) -> actix_web::Result<ListCommentResult, DbError> {
     use crate::schema::comments::dsl::{comments, created_at, deleted_at, post_id};
     use crate::schema::users::dsl::users;
 
@@ -90,6 +91,8 @@ pub fn get_comments_with_user(
         .filter(post_id.eq(parent_post_id))
         .filter(deleted_at.is_null())
         .order(created_at.asc())
+        .limit(pagination.limit)
+        .offset(pagination.get_offset())
         .select((Comment::as_select(), User::as_select()))
         .load::<(Comment, User)>(conn)?;
 
@@ -103,16 +106,23 @@ pub fn get_comments_with_user(
         })
         .collect();
 
-    Ok(comments_mapped)
+    let total = schema_comments::table
+        .filter(post_id.eq(parent_post_id))
+        .filter(deleted_at.is_null())
+        .count()
+        .get_result::<i64>(conn)?;
+
+    Ok(ListCommentResult {
+        comments: comments_mapped,
+        total,
+    })
 }
 
 pub fn get_comments_by_user(
     conn: &mut PgConnection,
     target_user_id: &i32,
-    pagination_opts: &QueryPagination,
+    pagination: &QueryPagination,
 ) -> actix_web::Result<ListCommentResult, DbError> {
-    let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
-
     use crate::schema::comments::dsl::{comments, created_at, deleted_at, user_id};
     use crate::schema::users::dsl::users;
 
@@ -121,8 +131,8 @@ pub fn get_comments_by_user(
         .filter(user_id.eq(target_user_id))
         .filter(deleted_at.is_null())
         .order(created_at.desc())
-        .limit(pagination_opts.limit)
-        .offset(offset_value)
+        .limit(pagination.limit)
+        .offset(pagination.get_offset())
         .select((Comment::as_select(), User::as_select()))
         .load::<(Comment, User)>(conn)?;
 

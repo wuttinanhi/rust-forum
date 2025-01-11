@@ -51,7 +51,7 @@
 <div id="comments" class="my-3">
   <h5 class="text-secondary">Comments:</h5>
 
-  {{#each comments}}
+  {{#each comments_result.comments}}
   <div class="card my-3" id="{{this.comment.id}}">
     <div class="card-body">
       <p>{{this.comment.content}}</p>
@@ -96,6 +96,14 @@
     </div>
   </div>
   {{/each}}
+</div>
+
+<div id="comments_pagination" class="d-flex flex-row justify-content-end">
+  <div class="d-flex flex-row align-items-baseline gap-3">
+    <p>Total comments : {{ comments_result.total }}</p>
+
+    {{ pagination pagination_result }}
+  </div>
 </div>
 
 <hr class="mt-5 my-3">

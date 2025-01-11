@@ -70,6 +70,13 @@ impl FromRequest for QueryPagination {
     }
 }
 
+impl QueryPagination {
+    pub fn get_offset(&self) -> i64 {
+        let offset_value = (self.page - 1) * self.limit;
+        offset_value
+    }
+}
+
 #[get("/test-pagination")]
 pub async fn test_pagination(
     pagination_data: QueryPagination,
@@ -94,8 +101,7 @@ pub async fn test_pagination(
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct HandlebarsPaginationResult {
     pub page: i64,
     pub limit: i64,
@@ -104,13 +110,12 @@ pub struct HandlebarsPaginationResult {
 
 pub fn build_handlebars_pagination_result(
     total_entity: i64,
-    page: i64,
-    limit: i64,
+    pagination: &QueryPagination,
 ) -> HandlebarsPaginationResult {
     HandlebarsPaginationResult {
-        limit,
-        page,
-        total_pages: (total_entity as f64 / limit as f64).ceil() as i64,
+        page: pagination.page,
+        limit: pagination.limit,
+        total_pages: (total_entity as f64 / pagination.limit as f64).ceil() as i64,
     }
 }
 

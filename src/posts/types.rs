@@ -11,6 +11,7 @@ pub struct PostPublic {
     pub allow_update: bool,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ListPostResult {
     pub posts: Vec<PostPublic>,
     pub total: i64,

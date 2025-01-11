@@ -14,7 +14,7 @@ use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::comments::routes::{
     delete_comment_route, update_comment_post_route, update_comment_route,
 };
-use rust_forum::posts::route::{delete_post_route, update_post_post_route, update_post_route};
+use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
 use rust_forum::routes::error::fallback_error_handler;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_post_route, users_settings_route,
@@ -207,7 +207,7 @@ async fn main() -> std::io::Result<()> {
             .service(create_post_submit_route)
             .service(view_post_route)
             .service(update_post_route)
-            .service(update_post_post_route)
+            .service(update_post_submit_route)
             .service(delete_post_route)
             .route("", web::to(index_list_posts_route));
 

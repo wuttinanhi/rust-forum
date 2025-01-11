@@ -37,15 +37,13 @@ pub fn get_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<Post
 
 pub fn get_posts(
     conn: &mut PgConnection,
-    pagination_opts: &QueryPagination,
+    pagination: &QueryPagination,
 ) -> actix_web::Result<Vec<Post>, DbError> {
-    let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
-
     let posts_vec = posts
         .filter(deleted_at.is_null())
         .order(created_at.desc())
-        .limit(pagination_opts.limit)
-        .offset(offset_value)
+        .limit(pagination.limit)
+        .offset(pagination.get_offset())
         .load(conn)?;
 
     Ok(posts_vec)
@@ -79,10 +77,8 @@ pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<u
 
 pub fn get_posts_with_user(
     conn: &mut PgConnection,
-    pagination_opts: &QueryPagination,
+    pagination: &QueryPagination,
 ) -> actix_web::Result<ListPostResult, DbError> {
-    let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
-
     use crate::schema::posts::dsl::{created_at, posts};
     use crate::schema::users::dsl::users;
 
@@ -90,8 +86,8 @@ pub fn get_posts_with_user(
         .inner_join(users)
         .filter(deleted_at.is_null())
         .order(created_at.desc())
-        .limit(pagination_opts.limit)
-        .offset(offset_value)
+        .limit(pagination.limit)
+        .offset(pagination.get_offset())
         .select((Post::as_select(), User::as_select()))
         .load::<(Post, User)>(conn)?;
 
@@ -119,10 +115,8 @@ pub fn get_posts_with_user(
 pub fn get_posts_by_user(
     conn: &mut PgConnection,
     target_user_id: i32,
-    pagination_opts: &QueryPagination,
+    pagination: &QueryPagination,
 ) -> actix_web::Result<ListPostResult, DbError> {
-    let offset_value = (pagination_opts.page - 1) * pagination_opts.limit;
-
     use crate::schema::posts::dsl::{created_at, deleted_at, posts, user_id};
     use crate::schema::users::dsl::users;
 
@@ -131,8 +125,8 @@ pub fn get_posts_by_user(
         .filter(user_id.eq(target_user_id))
         .filter(deleted_at.is_null())
         .order(created_at.desc())
-        .limit(pagination_opts.limit)
-        .offset(offset_value)
+        .limit(pagination.limit)
+        .offset(pagination.get_offset())
         .select((Post::as_select(), User::as_select()))
         .load::<(Post, User)>(conn)?;
 

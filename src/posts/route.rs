@@ -9,7 +9,7 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::{repository::get_comments_with_user, types::CommentPublic},
+    comments::{repository::get_comments_with_user, types::ListCommentResult},
     db::{DbError, DbPool},
     posts::{
         dto::{CreatePostFormData, UpdatePostFormData},
@@ -88,43 +88,54 @@ pub async fn view_post_route(
     hb: web::Data<Handlebars<'_>>,
     path: web::Path<i32>,
     session: Session,
+    pagination: QueryPagination,
 ) -> actix_web::Result<impl Responder> {
     let post_id = path.into_inner();
     let mut hb_data = json!({ "parent": "base" });
     let session_user = get_session_user(&session);
 
-    // Combine database operations into single block
-    let data_result: Result<(PostPublic, Vec<CommentPublic>), DbError> = web::block(move || {
+    let pagination_clone = pagination.clone();
+
+    let data_result: Result<(PostPublic, ListCommentResult), DbError> = web::block(move || {
         let mut conn = pool.get()?;
 
         let post = get_post_with_user(&mut conn, post_id)
             .map_err(|e| DbError::from(format!("Failed to get post: {}", e)))?;
 
-        let comments = get_comments_with_user(&mut conn, post.post.id)
+        let comment = get_comments_with_user(&mut conn, post.post.id, &pagination_clone)
             .map_err(|e| DbError::from(format!("Failed to get comments: {}", e)))?;
 
-        Ok((post, comments))
+        Ok((post, comment))
     })
     .await?;
 
     match data_result {
-        Ok((mut post, mut comments)) => {
+        Ok((mut post, mut comment_result)) => {
             // if post.user_id is equal session user id then allow update
             if let Ok(user) = session_user {
                 if post.user.id == user.id {
                     post.allow_update = true;
                 }
 
-                comments.iter_mut().for_each(|c| {
+                comment_result.comments.iter_mut().for_each(|c| {
                     if c.user.id == user.id {
                         c.allow_update = true;
                     }
                 });
             }
 
+            let comment_pagination_result =
+                build_handlebars_pagination_result(comment_result.total, &pagination);
+
+            update_handlebars_data(
+                &mut hb_data,
+                "pagination_result",
+                json!(comment_pagination_result),
+            );
+
             update_handlebars_data(&mut hb_data, "title", json!(post.post.title));
             update_handlebars_data(&mut hb_data, "post", json!(post));
-            update_handlebars_data(&mut hb_data, "comments", json!(comments));
+            update_handlebars_data(&mut hb_data, "comments_result", json!(comment_result));
         }
 
         Err(e) => {
@@ -150,7 +161,7 @@ pub async fn view_post_route(
 
 // #[get("/")]
 pub async fn index_list_posts_route(
-    pagination_data: QueryPagination,
+    pagination: QueryPagination,
     pool: web::Data<DbPool>,
     hb: web::Data<Handlebars<'_>>,
     session: Session,
@@ -159,7 +170,7 @@ pub async fn index_list_posts_route(
         "parent": "base",
     });
 
-    let pagination_data_clone = pagination_data.clone();
+    let pagination_data_clone = pagination.clone();
     let posts_result = web::block(move || {
         let mut conn = pool.get()?;
         get_posts_with_user(&mut conn, &pagination_data_clone)
@@ -168,13 +179,9 @@ pub async fn index_list_posts_route(
 
     match posts_result {
         Ok(result) => {
-            update_handlebars_data(&mut data, "posts", json!(&result.posts));
+            update_handlebars_data(&mut data, "posts_result", json!(&result));
 
-            let pagination_result = build_handlebars_pagination_result(
-                result.total,
-                pagination_data.page,
-                pagination_data.limit,
-            );
+            let pagination_result = build_handlebars_pagination_result(result.total, &pagination);
 
             update_handlebars_data(&mut data, "pagination_result", json!(pagination_result));
         }
@@ -234,7 +241,7 @@ pub async fn update_post_route(
 }
 
 #[post("/update/{post_id}")]
-pub async fn update_post_post_route(
+pub async fn update_post_submit_route(
     req: HttpRequest,
     form: web::Form<UpdatePostFormData>,
     pool: web::Data<DbPool>,

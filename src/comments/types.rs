@@ -11,6 +11,7 @@ pub struct CommentPublic {
     pub allow_update: bool,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ListCommentResult {
     pub comments: Vec<CommentPublic>,
     pub total: i64,

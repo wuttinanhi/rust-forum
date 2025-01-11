@@ -1,23 +1,5 @@
 {{#*inline "page"}}
 
-{{!-- <div class="row mt-5">
-    <div class="col"></div>
-    <div class="col-6">
-
-    </div>
-    <div class="col"></div>
-</div> --}}
-
-{{!-- {{ #if user }}
-Welcome: {{user.name}} <a href="users/logout">Logout</a>
-
-<div class="my-3 d-flex flex-row justify-content-end align-items-center">
-    <a href="/posts/create" class="btn btn-outline-primary">New Post</a>
-</div>
-{{else}}
-Welcome &nbsp; <a href="users/register">Register</a> &nbsp; | &nbsp; <a href="users/login">Login</a>
-{{/if}} --}}
-
 <div id="post_menu" class="my-3 d-flex flex-row justify-content-between align-items-center">
     <h5 class="text-secondary">Posts:</h5>
 
@@ -25,7 +7,7 @@ Welcome &nbsp; <a href="users/register">Register</a> &nbsp; | &nbsp; <a href="us
 </div>
 
 <div id="posts" class="my-3">
-    {{#each posts}}
+    {{#each posts_result.posts}}
 
     <div class="card my-3 p-0" id="{{this.post.id}}">
         <div class="card-body m-0">
@@ -50,8 +32,14 @@ Welcome &nbsp; <a href="users/register">Register</a> &nbsp; | &nbsp; <a href="us
     {{/each}}
 </div>
 
-<div id="pagination" class="mt-5">
-    {{pagination pagination_result}}
+
+
+<div id="posts_pagination" class="d-flex flex-row justify-content-end">
+    <div class="d-flex flex-row align-items-baseline gap-3">
+        <p>Total posts : {{ posts_result.total }}</p>
+
+        {{ pagination pagination_result }}
+    </div>
 </div>
 
 {{/inline}}
