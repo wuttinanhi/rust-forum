@@ -31,3 +31,20 @@ pub struct UserUploadProfilePictureForm {
     #[multipart(limit = "10MB")]
     pub profile_picture: TempFile,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct UserPasswordResetRequest {
+    pub email: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UserPasswordResetTokenQueryString {
+    pub token: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UserPasswordResetTokenRequest {
+    pub token: String,
+    pub new_password: String,
+    pub confirm_password: String,
+}

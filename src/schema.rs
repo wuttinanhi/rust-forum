@@ -13,6 +13,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    password_resets (id) {
+        id -> Int4,
+        user_id -> Int4,
+        #[max_length = 255]
+        reset_token -> Varchar,
+        expires_at -> Timestamp,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     posts (id) {
         id -> Int4,
         title -> Varchar,
@@ -44,10 +55,12 @@ diesel::table! {
 
 diesel::joinable!(comments -> posts (post_id));
 diesel::joinable!(comments -> users (user_id));
+diesel::joinable!(password_resets -> users (user_id));
 diesel::joinable!(posts -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     comments,
+    password_resets,
     posts,
     users,
 );

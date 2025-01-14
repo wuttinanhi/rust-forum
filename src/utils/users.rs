@@ -36,3 +36,15 @@ macro_rules! validate_input_user_password {
         }
     };
 }
+
+#[macro_export]
+macro_rules! validate_password_and_confirm_password {
+    ($form:expr) => {{
+        let new_password_and_confirm_password_equal = $form.new_password == $form.confirm_password;
+        if !new_password_and_confirm_password_equal {
+            return Err(actix_web::error::ErrorBadRequest(
+                "New password and confirm password not equal!",
+            ));
+        }
+    }};
+}

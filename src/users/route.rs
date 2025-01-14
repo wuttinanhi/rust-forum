@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use actix_multipart::form::MultipartForm;
-use actix_session::{Session, SessionExt};
+use actix_session::Session;
 use actix_web::{
     error, get, post,
     web::{self},
@@ -17,28 +17,33 @@ use crate::{
     models::UpdateUserNameAndProfilePicture,
     posts::{repository::get_posts_by_user, types::PostPublic},
     users::{
-        constants::SESSION_KEY_USER,
-        dto::{
-            UserChangePasswordFormData, UserLoginFormData, UserRegisterFormData,
-            UserUpdateFormData, UserUploadProfilePictureForm,
-        },
-        repository::{
-            create_user, get_user_by_id, get_user_sanitized_by_id, login_user, update_user_data,
-            update_user_password, validate_user_password,
-        },
+        constants::SESSION_KEY_USER, repository::get_password_reset_by_token,
         types::user_to_user_public,
     },
     utils::{
+        email::send_email,
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
-        http::create_redirect,
+        http::{create_redirect, redirect_back},
         pagination::{
             build_handlebars_pagination_result, HandlebarsPaginationResult, QueryPagination,
         },
         session::handlebars_add_user,
         users::get_session_user,
     },
-    validate_input_user_name, validate_input_user_password,
+    validate_input_user_name, validate_input_user_password, validate_password_and_confirm_password,
+};
+
+use super::dto::{
+    UserChangePasswordFormData, UserLoginFormData, UserPasswordResetRequest,
+    UserPasswordResetTokenQueryString, UserPasswordResetTokenRequest, UserRegisterFormData,
+    UserUpdateFormData, UserUploadProfilePictureForm,
+};
+
+use super::repository::{
+    create_password_reset, create_user, get_user_by_email, get_user_by_id,
+    get_user_sanitized_by_id, login_user, update_user_data, update_user_password,
+    update_user_password_from_reset, validate_user_password,
 };
 
 use super::types::OptionalFetchMode;
@@ -59,6 +64,7 @@ pub async fn users_login_route(
     });
 
     update_handlebars_data(&mut data, "title", json!("Login"));
+    handle_flash_message(&mut data, &session);
     let body = hb.render("users/login", &data).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
@@ -218,15 +224,10 @@ pub async fn users_changepassword_post_route(
 
     validate_input_user_password!(&form.confirm_password);
 
+    validate_password_and_confirm_password!(form);
+
     let user = web::block(move || {
         let mut conn = pool.get()?;
-
-        let new_password_and_confirm_password_equal = form.new_password == form.confirm_password;
-        if !new_password_and_confirm_password_equal {
-            return Err(DbError::from(
-                "New password and confirm password not equal!",
-            ));
-        }
 
         // get db user
         let user = get_user_by_id(&mut conn, session_user.id)
@@ -485,4 +486,126 @@ pub async fn users_view_profile_route(
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     Ok(HttpResponse::Ok().body(body))
+}
+
+#[get("/resetpassword")]
+pub async fn users_resetpassword_route(
+    hb: web::Data<Handlebars<'_>>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    if get_session_user(&session).is_ok() {
+        set_flash_message(&session, "error", "User already logged in!")?;
+
+        return Ok(create_redirect("/"));
+    }
+
+    let mut data = json!({
+        "parent": "base"
+    });
+
+    update_handlebars_data(&mut data, "title", json!("Reset password"));
+    handle_flash_message(&mut data, &session);
+
+    let body = hb.render("users/resetpassword", &data).unwrap();
+
+    Ok(HttpResponse::Ok().body(body))
+}
+
+#[post("/resetpassword")]
+pub async fn users_resetpassword_post_route(
+    pool: web::Data<DbPool>,
+    form: web::Form<UserPasswordResetRequest>,
+    session: Session,
+    req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let _ = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let target_reset_password_user = get_user_by_email(&mut conn, &form.email)
+            .map_err(|_| DbError::from("failed to get user"))?;
+
+        let password_reset = create_password_reset(&mut conn, &target_reset_password_user)?;
+
+        #[allow(non_snake_case)]
+        let APP_DOMAIN_URL = std::env::var("APP_DOMAIN_URL").expect("APP_DOMAIN_URL must be set");
+
+        let password_reset_url = format!(
+            "{}/users/resetpasswordtoken?token={}",
+            APP_DOMAIN_URL, password_reset.reset_token
+        );
+
+        let email_body = format!(
+            "you requested to reset password:
+<a href=\"{}\">{}</a>",
+            password_reset_url, password_reset_url
+        );
+
+        send_email(
+            &target_reset_password_user.email,
+            "Password reset instruction - Rust Forum",
+            &email_body,
+        )?;
+
+        Ok::<_, DbError>(())
+    })
+    .await?;
+
+    set_flash_message(
+        &session,
+        FLASH_SUCCESS,
+        "An email with password reset instruction was sent!",
+    )?;
+
+    Ok(redirect_back(&req))
+}
+
+#[get("/resetpasswordtoken")]
+pub async fn users_resetpasswordtoken_route(
+    hb: web::Data<Handlebars<'_>>,
+    session: Session,
+    query: web::Query<UserPasswordResetTokenQueryString>,
+) -> actix_web::Result<impl Responder> {
+    let mut data = json!({
+        "parent": "base",
+        "token": query.token,
+    });
+
+    update_handlebars_data(&mut data, "title", json!("Reset password with Token"));
+    handle_flash_message(&mut data, &session);
+
+    let body = hb.render("users/resetpasswordtoken", &data).unwrap();
+
+    Ok(HttpResponse::Ok().body(body))
+}
+
+#[post("/resetpasswordtoken")]
+pub async fn users_resetpasswordtoken_post_route(
+    pool: web::Data<DbPool>,
+    form: web::Form<UserPasswordResetTokenRequest>,
+    session: Session,
+) -> actix_web::Result<impl Responder> {
+    validate_input_user_password!(&form.new_password);
+    validate_password_and_confirm_password!(form);
+
+    let result = web::block(move || {
+        let mut conn = pool.get()?;
+
+        let password_reset = get_password_reset_by_token(&mut conn, &form.token)?;
+
+        update_user_password_from_reset(&mut conn, &password_reset, &form.new_password)?;
+
+        Ok::<_, DbError>(())
+    })
+    .await?;
+
+    match result {
+        Ok(_) => set_flash_message(&session, FLASH_SUCCESS, "Successfully reset password!")?,
+        Err(why) => set_flash_message(
+            &session,
+            FLASH_ERROR,
+            &format!("failed to reset password: {}", why.to_string()),
+        )?,
+    };
+
+    Ok(create_redirect("/users/login"))
 }

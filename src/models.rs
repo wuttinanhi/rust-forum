@@ -99,3 +99,24 @@ pub struct UpdateUserNameAndProfilePicture<'a> {
     pub name: Option<&'a str>,
     pub user_profile_picture_url: Option<&'a str>,
 }
+
+#[derive(
+    Queryable, Selectable, Identifiable, Debug, Eq, PartialEq, AsChangeset, Serialize, Deserialize,
+)]
+#[diesel(table_name = password_resets)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PasswordReset {
+    pub id: i32,
+    pub user_id: i32,
+    pub reset_token: String,
+    pub expires_at: chrono::NaiveDateTime,
+    pub created_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name=password_resets)]
+pub struct NewPasswordReset {
+    pub user_id: i32,
+    pub reset_token: String,
+    pub expires_at: chrono::NaiveDateTime,
+}

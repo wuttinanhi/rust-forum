@@ -16,8 +16,10 @@ use rust_forum::comments::routes::{
 };
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
 use rust_forum::users::route::{
-    users_changepassword_post_route, users_profile_picture_upload_post_route, users_settings_route,
-    users_update_data_post_route, users_view_profile_route,
+    users_changepassword_post_route, users_profile_picture_upload_post_route,
+    users_resetpassword_post_route, users_resetpassword_route, users_resetpasswordtoken_post_route,
+    users_resetpasswordtoken_route, users_settings_route, users_update_data_post_route,
+    users_view_profile_route,
 };
 use rust_forum::utils::pagination::handlebars_pagination_helper;
 use rust_forum::{
@@ -195,7 +197,11 @@ async fn main() -> std::io::Result<()> {
                 web::resource(["/profile/{user_id}", "/profile/{user_id}/{fetch_mode}"])
                     .to(users_view_profile_route),
             )
-            .service(users_settings_route);
+            .service(users_settings_route)
+            .service(users_resetpassword_route)
+            .service(users_resetpassword_post_route)
+            .service(users_resetpasswordtoken_route)
+            .service(users_resetpasswordtoken_post_route);
 
         let posts_scope = web::scope("/posts")
             .service(create_post_route)
