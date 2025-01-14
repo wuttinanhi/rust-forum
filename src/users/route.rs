@@ -1,14 +1,11 @@
-use std::{
-    io::{Read, Write},
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use actix_multipart::form::MultipartForm;
-use actix_session::Session;
+use actix_session::{Session, SessionExt};
 use actix_web::{
     error, get, post,
     web::{self},
-    HttpResponse, Responder,
+    HttpRequest, HttpResponse, Responder,
 };
 
 use handlebars::Handlebars;
@@ -305,7 +302,7 @@ pub async fn users_update_data_post_route(
 }
 
 #[post("/profilepicture")]
-pub async fn users_profile_picture_post_route(
+pub async fn users_profile_picture_upload_post_route(
     pool: web::Data<DbPool>,
     session: Session,
     MultipartForm(form): MultipartForm<UserUploadProfilePictureForm>,
@@ -324,6 +321,7 @@ pub async fn users_profile_picture_post_route(
     .await?
     .map_err(actix_web::error::ErrorInternalServerError)?;
 
+    // check content type
     let content_type = form
         .profile_picture
         .content_type
@@ -334,25 +332,22 @@ pub async fn users_profile_picture_post_route(
         return Err(actix_web::error::ErrorBadRequest("Invalid file type"));
     }
 
+    // check file size
     let size = form.profile_picture.size;
     if size > 10 * 1024 * 1024 {
         return Err(actix_web::error::ErrorBadRequest("File too large"));
     }
 
-    let file_bytes: Vec<u8> = form
-        .profile_picture
-        .file
-        .bytes()
-        .collect::<Result<_, _>>()
-        .map_err(actix_web::error::ErrorInternalServerError)?;
-
+    // generate save file path
     let unix_time = chrono::Utc::now().timestamp();
     let file_path = format!("static/{}.jpg", unix_time);
 
     web::block(move || {
-        // save file to static
-        let mut file = std::fs::File::create(&file_path)?;
-        file.write_all(&file_bytes)?;
+        // save file
+        form.profile_picture
+            .file
+            .persist(&file_path)
+            .map_err(DbError::from)?;
 
         let mut conn = pool.get().map_err(DbError::from)?;
 

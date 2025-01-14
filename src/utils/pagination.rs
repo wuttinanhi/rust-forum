@@ -72,8 +72,8 @@ impl FromRequest for QueryPagination {
 
 impl QueryPagination {
     pub fn get_offset(&self) -> i64 {
-        let offset_value = (self.page - 1) * self.limit;
-        offset_value
+        
+        (self.page - 1) * self.limit
     }
 }
 

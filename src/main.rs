@@ -1,23 +1,22 @@
 use actix_cors::Cors;
 use actix_limitation::{Limiter, RateLimiter};
+use actix_multipart::form::MultipartFormConfig;
 use actix_session::config::PersistentSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::dev::ServiceRequest;
-use actix_web::http;
-use actix_web::middleware::ErrorHandlers;
 use actix_web::{
     cookie::Key,
     web::{self},
     App, HttpServer,
 };
+use actix_web::{http, HttpRequest, HttpResponse};
 use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::comments::routes::{
     delete_comment_route, update_comment_post_route, update_comment_route,
 };
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
-use rust_forum::routes::error::fallback_error_handler;
 use rust_forum::users::route::{
-    users_changepassword_post_route, users_profile_picture_post_route, users_settings_route,
+    users_changepassword_post_route, users_profile_picture_upload_post_route, users_settings_route,
     users_update_data_post_route, users_view_profile_route,
 };
 use rust_forum::utils::pagination::handlebars_pagination_helper;
@@ -134,8 +133,6 @@ async fn main() -> std::io::Result<()> {
             .map(|val| val == "true")
             .unwrap_or(false);
 
-        // --- cookie session middleware ---
-
         let cookie_key = Key::from(
             // must be 64 bytes long
             "dev-cookie-key-1234567890-dev-cookie-key-1234567890-dev-cookie-key-1234567890"
@@ -153,7 +150,6 @@ async fn main() -> std::io::Result<()> {
             .build();
 
         // -- setup CORS ---
-
         let cors_middleware = Cors::default()
             .allowed_origin_fn(move |origin, _req_head| {
                 cors_origins_split
@@ -169,7 +165,6 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         // -- setup rate limiter --
-
         let limiter = web::Data::new(
             Limiter::builder(ratelimit_redis_url)
                 .key_by(|req: &ServiceRequest| {
@@ -195,7 +190,7 @@ async fn main() -> std::io::Result<()> {
             .service(users_logout)
             .service(users_changepassword_post_route)
             .service(users_update_data_post_route)
-            .service(users_profile_picture_post_route)
+            .service(users_profile_picture_upload_post_route)
             .service(
                 web::resource(["/profile/{user_id}", "/profile/{user_id}/{fetch_mode}"])
                     .to(users_view_profile_route),
@@ -223,7 +218,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(handlebars_ref.clone())
             .wrap(RateLimiter::default())
             .app_data(limiter.clone())
-            .wrap(ErrorHandlers::new().default_handler(fallback_error_handler))
+            .app_data(MultipartFormConfig::default().error_handler(handle_multipart_error))
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .service(fs::Files::new("/static", "./static"))
             .wrap(cors_middleware)
@@ -238,4 +233,13 @@ async fn main() -> std::io::Result<()> {
     // .workers(1)
     .run()
     .await
+}
+
+// apply large file upload fix from https://github.com/actix/actix-web/issues/3152#issuecomment-2539018905
+fn handle_multipart_error(
+    err: actix_multipart::MultipartError,
+    _req: &HttpRequest,
+) -> actix_web::Error {
+    let response = HttpResponse::BadRequest().force_close().finish();
+    actix_web::error::InternalError::from_response(err, response).into()
 }

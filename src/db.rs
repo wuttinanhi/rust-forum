@@ -15,7 +15,7 @@ pub fn initialize_db_pool() -> DbPool {
 
     r2d2::Pool::builder()
         .build(manager)
-        .expect("database URL should be valid path to SQLite DB file")
+        .expect("can't connect to database!")
 }
 
 pub fn map_diesel_error_to_message(error: diesel::result::Error) -> &'static str {
