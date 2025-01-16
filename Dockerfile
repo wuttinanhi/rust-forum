@@ -1,4 +1,4 @@
-FROM rust:1 as build-env
+FROM rust:1 AS build-env
 
 RUN apt install -y libpq-dev
 

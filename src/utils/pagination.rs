@@ -72,7 +72,6 @@ impl FromRequest for QueryPagination {
 
 impl QueryPagination {
     pub fn get_offset(&self) -> i64 {
-        
         (self.page - 1) * self.limit
     }
 }
@@ -132,8 +131,15 @@ pub fn handlebars_pagination_helper(
         handlebars::RenderErrorReason::ParamNotFoundForIndex("pagination_result", 0)
     })?;
 
+    let pagination_result_json = pagination_result.value();
+
+    // pagination_result first param maybe null if no records
+    if pagination_result_json.is_null() {
+        return Ok(());
+    }
+
     let pagination_result: HandlebarsPaginationResult =
-        serde_json::from_value(pagination_result.value().clone())
+        serde_json::from_value(pagination_result_json.clone())
             .map_err(|e| handlebars::RenderErrorReason::InvalidJsonIndex(e.to_string()))?;
 
     let mut output_html = String::new();

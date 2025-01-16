@@ -1,5 +1,6 @@
 volumes:
   prod_db:
+  prod_static:
   redis_data:
 
 services:
@@ -16,6 +17,8 @@ services:
       - "REDIS_PASSWORD=redis123"
     ports:
       - "3000:3000"
+    volumes:
+      - "prod_static:/app/static"
 
   db:
     image: postgres

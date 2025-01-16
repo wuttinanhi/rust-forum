@@ -186,7 +186,11 @@ pub async fn index_list_posts_route(
             update_handlebars_data(&mut data, "pagination_result", json!(pagination_result));
         }
 
-        Err(_) => set_flash_message(&session, "error", "failed to list posts")?,
+        Err(why) => set_flash_message(
+            &session,
+            "error",
+            &format!("failed to list posts: {}", &why.to_string(),),
+        )?,
     }
 
     handle_flash_message(&mut data, &session);

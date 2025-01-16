@@ -6,5 +6,5 @@ pub fn generate_random_token(length: u8) -> String {
         .take(length.into())
         .map(char::from)
         .collect();
-    return s;
+    s
 }

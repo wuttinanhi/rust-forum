@@ -14,6 +14,7 @@ use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::comments::routes::{
     delete_comment_route, update_comment_post_route, update_comment_route,
 };
+use rust_forum::db::run_migrations;
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,
@@ -39,6 +40,9 @@ use actix_web::middleware::NormalizePath;
 use actix_web::middleware::TrailingSlash;
 use dotenv::dotenv;
 
+use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/");
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -60,6 +64,11 @@ async fn main() -> std::io::Result<()> {
 
     // --- database setup ---
     let db_pool = initialize_db_pool();
+
+    {
+        let mut conn = db_pool.get().expect("faild to get migration connection");
+        let _ = run_migrations(&mut conn, MIGRATIONS);
+    }
 
     // CORS
     let cors_origins = std::env::var("APP_CORS_ORIGINS")

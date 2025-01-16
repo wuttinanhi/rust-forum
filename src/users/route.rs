@@ -603,7 +603,7 @@ pub async fn users_resetpasswordtoken_post_route(
         Err(why) => set_flash_message(
             &session,
             FLASH_ERROR,
-            &format!("failed to reset password: {}", why.to_string()),
+            &format!("failed to reset password: {}", why),
         )?,
     };
 
