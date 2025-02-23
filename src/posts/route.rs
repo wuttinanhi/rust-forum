@@ -10,9 +10,9 @@ use serde_json::json;
 
 use crate::{
     comments::{repository::get_comments_with_user, types::ListCommentResult},
-    db::{DbError, DbPool},
+    db::{WebError, DbPool},
     posts::{
-        dto::{CreatePostFormData, UpdatePostFormData},
+        dto::PostFormData,
         repository::{delete_post, update_post},
         types::PostPublic,
     },
@@ -54,7 +54,7 @@ pub async fn create_post_route(
 #[post("/create")]
 pub async fn create_post_submit_route(
     pool: web::Data<DbPool>,
-    form: web::Form<CreatePostFormData>,
+    form: web::Form<PostFormData>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     let user = get_session_user(&session)?;
@@ -96,14 +96,14 @@ pub async fn view_post_route(
 
     let pagination_clone = pagination.clone();
 
-    let data_result: Result<(PostPublic, ListCommentResult), DbError> = web::block(move || {
+    let data_result: Result<(PostPublic, ListCommentResult), WebError> = web::block(move || {
         let mut conn = pool.get()?;
 
         let post = get_post_with_user(&mut conn, post_id)
-            .map_err(|e| DbError::from(format!("Failed to get post: {}", e)))?;
+            .map_err(|e| WebError::from(format!("Failed to get post: {}", e)))?;
 
         let comment = get_comments_with_user(&mut conn, post.post.id, &pagination_clone)
-            .map_err(|e| DbError::from(format!("Failed to get comments: {}", e)))?;
+            .map_err(|e| WebError::from(format!("Failed to get comments: {}", e)))?;
 
         Ok((post, comment))
     })
@@ -247,7 +247,7 @@ pub async fn update_post_route(
 #[post("/update/{post_id}")]
 pub async fn update_post_submit_route(
     req: HttpRequest,
-    form: web::Form<UpdatePostFormData>,
+    form: web::Form<PostFormData>,
     pool: web::Data<DbPool>,
     path: web::Path<i32>,
     session: Session,
@@ -259,10 +259,10 @@ pub async fn update_post_submit_route(
         let mut conn = pool.get()?;
 
         let fetch_result = get_post_with_user(&mut conn, post_id)
-            .map_err(|e| DbError::from(format!("failed to get post {}", e)))?;
+            .map_err(|e| WebError::from(format!("failed to get post {}", e)))?;
 
         if fetch_result.user.id != session_user.id {
-            return Err(DbError::from("User does not own post"));
+            return Err(WebError::from("User does not own post"));
         }
 
         update_post(&mut conn, fetch_result.post.id, &form.title, &form.body)
@@ -301,10 +301,10 @@ pub async fn delete_post_route(
         let mut conn = pool.get()?;
 
         let post = get_post(&mut conn, post_id)
-            .map_err(|e| DbError::from(format!("failed to get post {}", e)))?;
+            .map_err(|e| WebError::from(format!("failed to get post {}", e)))?;
 
         if post.user_id != session_user.id {
-            return Err(DbError::from("User does not own post"));
+            return Err(WebError::from("User does not own post"));
         }
 
         delete_post(&mut conn, post_id)
