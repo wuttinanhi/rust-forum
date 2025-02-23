@@ -1,5 +1,5 @@
 use super::types::{user_to_user_public, UserPublic};
-use crate::db::DbError;
+use crate::db::WebError;
 use crate::models::{
     NewPasswordReset, NewUser, PasswordReset, UpdateUserNameAndProfilePicture, User,
 };
@@ -15,7 +15,7 @@ pub fn create_user(
     name: &str,
     email: &str,
     password: &str,
-) -> Result<User, DbError> {
+) -> Result<User, WebError> {
     let hashed = hash(password, DEFAULT_COST).unwrap();
 
     let new_user_data = NewUser {
@@ -36,7 +36,7 @@ pub fn login_user(
     conn: &mut PgConnection,
     user_email: &str,
     user_password: &str,
-) -> Result<User, DbError> {
+) -> Result<User, WebError> {
     // Query the user by email
     let user: User = get_user_by_email(conn, user_email)?;
 
@@ -52,13 +52,13 @@ pub fn login_user(
     }
 }
 
-pub fn get_user_by_id(conn: &mut PgConnection, target_user_id: i32) -> Result<User, DbError> {
+pub fn get_user_by_id(conn: &mut PgConnection, target_user_id: i32) -> Result<User, WebError> {
     use crate::schema::users::dsl::*;
     let user = users.filter(id.eq(target_user_id)).first(conn)?;
     Ok(user)
 }
 
-pub fn get_user_by_email(conn: &mut PgConnection, user_email: &str) -> Result<User, DbError> {
+pub fn get_user_by_email(conn: &mut PgConnection, user_email: &str) -> Result<User, WebError> {
     use crate::schema::users::dsl::*;
     let user = users.filter(email.eq(user_email)).first(conn)?;
     Ok(user)
@@ -71,7 +71,7 @@ pub fn validate_user_password(user: &User, user_password: &str) -> bool {
 pub fn get_user_sanitized_by_id(
     conn: &mut PgConnection,
     target_user_id: i32,
-) -> Result<UserPublic, DbError> {
+) -> Result<UserPublic, WebError> {
     let non_sanitized_user = get_user_by_id(conn, target_user_id)?;
 
     let user_public = user_to_user_public(&non_sanitized_user);
@@ -83,7 +83,7 @@ pub fn update_user_password(
     conn: &mut PgConnection,
     user: &User,
     new_password: &str,
-) -> Result<(), DbError> {
+) -> Result<(), WebError> {
     use crate::schema::users::dsl::*;
 
     let hashed = hash(new_password, DEFAULT_COST).unwrap();
@@ -99,7 +99,7 @@ pub fn update_user_email(
     conn: &mut PgConnection,
     user: &User,
     new_email: &str,
-) -> Result<(), DbError> {
+) -> Result<(), WebError> {
     use crate::schema::users::dsl::*;
     diesel::update(users.filter(id.eq(user.id)))
         .set(email.eq(new_email))
@@ -111,7 +111,7 @@ pub fn update_user_data(
     conn: &mut PgConnection,
     user: &User,
     new_data: &UpdateUserNameAndProfilePicture,
-) -> Result<(), DbError> {
+) -> Result<(), WebError> {
     use crate::schema::users::dsl::*;
 
     diesel::update(users.filter(id.eq(user.id)))
@@ -120,7 +120,7 @@ pub fn update_user_data(
     Ok(())
 }
 
-pub fn delete_user(conn: &mut PgConnection, user: &User) -> Result<(), DbError> {
+pub fn delete_user(conn: &mut PgConnection, user: &User) -> Result<(), WebError> {
     use crate::schema::users::dsl::*;
     diesel::delete(users.filter(id.eq(user.id))).execute(conn)?;
     Ok(())
@@ -129,7 +129,7 @@ pub fn delete_user(conn: &mut PgConnection, user: &User) -> Result<(), DbError> 
 pub fn create_password_reset(
     conn: &mut PgConnection,
     user: &User,
-) -> Result<PasswordReset, DbError> {
+) -> Result<PasswordReset, WebError> {
     use crate::schema::password_resets::dsl::*;
 
     // expire within 1 hour
@@ -153,7 +153,7 @@ pub fn create_password_reset(
 pub fn get_password_reset_by_token(
     conn: &mut PgConnection,
     target_token: &str,
-) -> Result<PasswordReset, DbError> {
+) -> Result<PasswordReset, WebError> {
     use crate::schema::password_resets::dsl::*;
 
     let password_reset = password_resets
@@ -166,7 +166,7 @@ pub fn get_password_reset_by_token(
 pub fn delete_password_reset(
     conn: &mut PgConnection,
     password_reset: &PasswordReset,
-) -> Result<(), DbError> {
+) -> Result<(), WebError> {
     use crate::schema::password_resets::dsl::*;
     diesel::delete(password_resets.filter(id.eq(password_reset.id))).execute(conn)?;
     Ok(())
@@ -175,7 +175,7 @@ pub fn delete_password_reset(
 pub fn delete_password_resets_for_user(
     conn: &mut PgConnection,
     user: &User,
-) -> Result<(), DbError> {
+) -> Result<(), WebError> {
     use crate::schema::password_resets::dsl::*;
     diesel::delete(password_resets.filter(user_id.eq(user.id))).execute(conn)?;
     Ok(())
@@ -185,9 +185,9 @@ pub fn update_user_password_from_reset(
     conn: &mut PgConnection,
     password_reset: &PasswordReset,
     new_password: &str,
-) -> Result<(), DbError> {
+) -> Result<(), WebError> {
     if password_reset.expires_at < Utc::now().naive_utc() {
-        return Err(DbError::from("password reset expired"));
+        return Err(WebError::from("password reset expired"));
     }
 
     let user = get_user_by_id(conn, password_reset.user_id)?;

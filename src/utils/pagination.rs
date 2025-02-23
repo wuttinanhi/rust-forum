@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-    db::{DbError, DbPool},
+    db::{WebError, DbPool},
     models::Post,
     posts::repository::get_posts,
 };
@@ -81,7 +81,7 @@ pub async fn test_pagination(
     pagination_data: QueryPagination,
     pool: web::Data<DbPool>,
 ) -> actix_web::Result<impl Responder> {
-    let posts: Result<Vec<Post>, DbError> = web::block(move || {
+    let posts: Result<Vec<Post>, WebError> = web::block(move || {
         let mut conn = pool.get()?;
         let posts = get_posts(&mut conn, &pagination_data)?;
 

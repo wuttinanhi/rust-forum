@@ -1,4 +1,4 @@
-use crate::db::DbError;
+use crate::db::WebError;
 use crate::models::{Comment, NewComment, User};
 use crate::schema::comments as schema_comments;
 use crate::utils::pagination::QueryPagination;
@@ -12,7 +12,7 @@ pub fn create_comment(
     comment_user_id: &i32,
     parent_post_id: &i32,
     comment_body: &str,
-) -> actix_web::Result<Comment, DbError> {
+) -> actix_web::Result<Comment, WebError> {
     let new_comment_data = NewComment {
         post_id: *parent_post_id,
         user_id: *comment_user_id,
@@ -30,7 +30,7 @@ pub fn create_comment(
 pub fn get_comment(
     conn: &mut PgConnection,
     comment_id: i32,
-) -> actix_web::Result<Comment, DbError> {
+) -> actix_web::Result<Comment, WebError> {
     use crate::schema::comments::dsl::*;
     let comment = comments
         .find(comment_id)
@@ -42,7 +42,7 @@ pub fn get_comment(
 pub fn get_comments(
     conn: &mut PgConnection,
     parent_post_id: &i32,
-) -> actix_web::Result<Vec<Comment>, DbError> {
+) -> actix_web::Result<Vec<Comment>, WebError> {
     use crate::schema::comments::dsl::*;
 
     let comments_vec = comments
@@ -58,7 +58,7 @@ pub fn update_comment(
     conn: &mut PgConnection,
     target_comment_id: i32,
     new_body: &str,
-) -> actix_web::Result<Comment, DbError> {
+) -> actix_web::Result<Comment, WebError> {
     use crate::schema::comments::dsl::*;
 
     let comment = diesel::update(comments.find(target_comment_id))
@@ -72,7 +72,7 @@ pub fn update_comment(
 pub fn delete_comment(
     conn: &mut PgConnection,
     target_post_id: i32,
-) -> actix_web::Result<usize, DbError> {
+) -> actix_web::Result<usize, WebError> {
     use crate::schema::comments::dsl::*;
 
     let delete_usize = diesel::update(comments.find(target_post_id))
@@ -86,7 +86,7 @@ pub fn get_comments_with_user(
     conn: &mut PgConnection,
     parent_post_id: i32,
     pagination: &QueryPagination,
-) -> actix_web::Result<ListCommentResult, DbError> {
+) -> actix_web::Result<ListCommentResult, WebError> {
     use crate::schema::comments::dsl::{comments, created_at, deleted_at, post_id};
     use crate::schema::users::dsl::users;
 
@@ -126,7 +126,7 @@ pub fn get_comments_by_user(
     conn: &mut PgConnection,
     target_user_id: &i32,
     pagination: &QueryPagination,
-) -> actix_web::Result<ListCommentResult, DbError> {
+) -> actix_web::Result<ListCommentResult, WebError> {
     use crate::schema::comments::dsl::{comments, created_at, deleted_at, user_id};
     use crate::schema::users::dsl::users;
 
@@ -166,7 +166,7 @@ pub fn get_page_where_comment_at(
     conn: &mut PgConnection,
     target_comment: &Comment,
     page_limit: i64,
-) -> Result<i64, DbError> {
+) -> Result<i64, WebError> {
     use schema_comments::dsl::{deleted_at, id, post_id};
 
     let nth_row_comment = schema_comments::table

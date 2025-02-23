@@ -13,7 +13,7 @@ use serde_json::json;
 
 use crate::{
     comments::{repository::get_comments_by_user, types::CommentPublic},
-    db::{DbError, DbPool},
+    db::{DbPool, WebError},
     models::UpdateUserNameAndProfilePicture,
     posts::{repository::get_posts_by_user, types::PostPublic},
     users::{
@@ -131,6 +131,10 @@ pub async fn users_register_route(
     });
 
     update_handlebars_data(&mut data, "title", json!("Register"));
+    handle_flash_message(&mut data, &session);
+
+    dbg!(&data);
+
     let body = hb.render("users/register", &data).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
@@ -194,7 +198,7 @@ pub async fn users_settings_route(
 
         // we need to get updated data from db
         get_user_sanitized_by_id(&mut conn, session_user.id)
-            .map_err(|_| DbError::from("User by session not found"))
+            .map_err(|_| WebError::from("User by session not found"))
     })
     .await?;
 
@@ -231,19 +235,19 @@ pub async fn users_changepassword_post_route(
 
         // get db user
         let user = get_user_by_id(&mut conn, session_user.id)
-            .map_err(|_| DbError::from("User by session not found"))?;
+            .map_err(|_| WebError::from("User by session not found"))?;
 
         // validate current password
         let current_password_valid = validate_user_password(&user, &form.current_password);
         if !current_password_valid {
-            return Err(DbError::from("Invalid current password!"));
+            return Err(WebError::from("Invalid current password!"));
         }
 
         // update user password
         let new_password = &form.confirm_password;
 
         update_user_password(&mut conn, &user, new_password)
-            .map_err(|_| DbError::from("Failed to change password!"))
+            .map_err(|_| WebError::from("Failed to change password!"))
     })
     .await?;
 
@@ -275,7 +279,7 @@ pub async fn users_update_data_post_route(
 
         // get db user
         let user = get_user_by_id(&mut conn, session_user.id)
-            .map_err(|_| DbError::from("User by session not found"))?;
+            .map_err(|_| WebError::from("User by session not found"))?;
 
         // update user data
         update_user_data(
@@ -314,9 +318,9 @@ pub async fn users_profile_picture_upload_post_route(
     let db_user = web::block({
         let pool = pool.clone();
         move || {
-            let mut conn = pool.get().map_err(|_| DbError::from("Database error"))?;
+            let mut conn = pool.get().map_err(|_| WebError::from("Database error"))?;
             get_user_by_id(&mut conn, session_user.id)
-                .map_err(|_| DbError::from("User by session not found"))
+                .map_err(|_| WebError::from("User by session not found"))
         }
     })
     .await?
@@ -348,9 +352,9 @@ pub async fn users_profile_picture_upload_post_route(
         form.profile_picture
             .file
             .persist(&file_path)
-            .map_err(DbError::from)?;
+            .map_err(WebError::from)?;
 
-        let mut conn = pool.get().map_err(DbError::from)?;
+        let mut conn = pool.get().map_err(WebError::from)?;
 
         // add slash to make it accessible from client
         let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
@@ -369,7 +373,7 @@ pub async fn users_profile_picture_upload_post_route(
             &user_profile_picture_url_pre_slash
         );
 
-        Ok::<_, DbError>(())
+        Ok::<_, WebError>(())
     })
     .await?
     .map_err(actix_web::error::ErrorInternalServerError)?;
@@ -435,7 +439,7 @@ pub async fn users_view_profile_route(
 
             *pagination_result_clone.lock().unwrap() = pagination_result;
         } else {
-            return Err(DbError::from("no fetch mode was provide"));
+            return Err(WebError::from("no fetch mode was provide"));
         }
 
         Ok(user_sanitized)
@@ -522,7 +526,7 @@ pub async fn users_resetpassword_post_route(
         let mut conn = pool.get()?;
 
         let target_reset_password_user = get_user_by_email(&mut conn, &form.email)
-            .map_err(|_| DbError::from("failed to get user"))?;
+            .map_err(|_| WebError::from("failed to get user"))?;
 
         let password_reset = create_password_reset(&mut conn, &target_reset_password_user)?;
 
@@ -546,7 +550,7 @@ pub async fn users_resetpassword_post_route(
             &email_body,
         )?;
 
-        Ok::<_, DbError>(())
+        Ok::<_, WebError>(())
     })
     .await?;
 
@@ -594,7 +598,7 @@ pub async fn users_resetpasswordtoken_post_route(
 
         update_user_password_from_reset(&mut conn, &password_reset, &form.new_password)?;
 
-        Ok::<_, DbError>(())
+        Ok::<_, WebError>(())
     })
     .await?;
 

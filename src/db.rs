@@ -9,7 +9,7 @@ use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 /// Short-hand for the database pool type to use throughout the app.
 pub type DbPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
 
-pub type DbError = Box<dyn std::error::Error + Send + Sync>;
+pub type WebError = Box<dyn std::error::Error + Send + Sync>;
 
 pub fn initialize_db_pool() -> DbPool {
     let conn_spec = std::env::var("DATABASE_URL").expect("DATABASE_URL should be set");
@@ -39,7 +39,7 @@ pub fn map_diesel_error_to_message(error: diesel::result::Error) -> &'static str
 pub fn run_migrations(
     connection: &mut impl MigrationHarness<Pg>,
     migrations: EmbeddedMigrations,
-) -> Result<(), DbError> {
+) -> Result<(), WebError> {
     // This will run the necessary migrations.
     //
     // See the documentation for `MigrationHarness` for

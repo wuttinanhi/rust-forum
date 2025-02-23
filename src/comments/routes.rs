@@ -10,7 +10,7 @@ use serde_json::json;
 
 use crate::{
     comments::repository::get_page_where_comment_at,
-    db::{DbError, DbPool},
+    db::{WebError, DbPool},
     models::Comment,
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
@@ -34,7 +34,7 @@ pub async fn create_comment_submit_route(
 
     let post_id = form.post_id;
 
-    let result: Result<(Comment, i64), DbError> = web::block(move || {
+    let result: Result<(Comment, i64), WebError> = web::block(move || {
         let mut conn = pool.get()?;
         let comment = create_comment(&mut conn, &user.id, &form.post_id, &form.body)?;
 
@@ -123,14 +123,14 @@ pub async fn update_comment_post_route(
     let comment_id = path.into_inner();
     let session_user = get_session_user(&session)?;
 
-    let result: Result<(Comment, i64), DbError> = web::block(move || {
+    let result: Result<(Comment, i64), WebError> = web::block(move || {
         let mut conn = pool.get()?;
 
         let comment = get_comment(&mut conn, comment_id)
-            .map_err(|e| DbError::from(format!("failed to get comment {}", e)))?;
+            .map_err(|e| WebError::from(format!("failed to get comment {}", e)))?;
 
         if comment.user_id != session_user.id {
-            return Err(DbError::from("Error : User does not own comment"));
+            return Err(WebError::from("Error : User does not own comment"));
         }
 
         let comment = update_comment(&mut conn, comment.id, &form.body)?;
@@ -170,14 +170,14 @@ pub async fn delete_comment_route(
     let comment_id = path.into_inner();
     let session_user = get_session_user(&session)?;
 
-    let delete_comment_result: Result<(Comment, i64), DbError> = web::block(move || {
+    let delete_comment_result: Result<(Comment, i64), WebError> = web::block(move || {
         let mut conn = pool.get()?;
 
         let comment = get_comment(&mut conn, comment_id)
-            .map_err(|e| DbError::from(format!("failed to get comment {}", e)))?;
+            .map_err(|e| WebError::from(format!("failed to get comment {}", e)))?;
 
         if comment.user_id != session_user.id {
-            return Err(DbError::from("Error : User does not own comment"));
+            return Err(WebError::from("Error : User does not own comment"));
         }
 
         delete_comment(&mut conn, comment.id)?;

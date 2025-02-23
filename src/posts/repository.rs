@@ -1,4 +1,4 @@
-use crate::db::DbError;
+use crate::db::WebError;
 use crate::models::{NewPost, Post, User};
 use crate::schema::posts as schema_posts;
 use crate::schema::posts::dsl::*;
@@ -13,7 +13,7 @@ pub fn create_post(
     post_user_id: &i32,
     post_title: &str,
     post_body: &str,
-) -> actix_web::Result<Post, DbError> {
+) -> actix_web::Result<Post, WebError> {
     let new_post_data = NewPost {
         title: post_title,
         body: post_body,
@@ -29,7 +29,7 @@ pub fn create_post(
     Ok(new_post)
 }
 
-pub fn get_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<Post, DbError> {
+pub fn get_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<Post, WebError> {
     let post = posts
         .find(post_id)
         .filter(deleted_at.is_null())
@@ -41,7 +41,7 @@ pub fn get_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<Post
 pub fn get_posts(
     conn: &mut PgConnection,
     pagination: &QueryPagination,
-) -> actix_web::Result<Vec<Post>, DbError> {
+) -> actix_web::Result<Vec<Post>, WebError> {
     let posts_vec = posts
         .filter(deleted_at.is_null())
         .order(created_at.desc())
@@ -57,7 +57,7 @@ pub fn update_post(
     post_id: i32,
     post_title: &str,
     post_body: &str,
-) -> actix_web::Result<Post, DbError> {
+) -> actix_web::Result<Post, WebError> {
     let update_result = diesel::update(posts.find(post_id))
         .set((
             title.eq(post_title),
@@ -70,7 +70,7 @@ pub fn update_post(
     Ok(update_result)
 }
 
-pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<usize, DbError> {
+pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<usize, WebError> {
     let delete_result = diesel::update(posts.find(post_id))
         .set(deleted_at.eq(diesel::dsl::now))
         .execute(conn)?;
@@ -81,7 +81,7 @@ pub fn delete_post(conn: &mut PgConnection, post_id: i32) -> actix_web::Result<u
 pub fn get_posts_with_user(
     conn: &mut PgConnection,
     pagination: &QueryPagination,
-) -> actix_web::Result<ListPostResult, DbError> {
+) -> actix_web::Result<ListPostResult, WebError> {
     use crate::schema::posts::dsl::{created_at, posts};
     use crate::schema::users::dsl::users;
 
@@ -119,7 +119,7 @@ pub fn get_posts_by_user(
     conn: &mut PgConnection,
     target_user_id: i32,
     pagination: &QueryPagination,
-) -> actix_web::Result<ListPostResult, DbError> {
+) -> actix_web::Result<ListPostResult, WebError> {
     use crate::schema::posts::dsl::{created_at, deleted_at, posts, user_id};
     use crate::schema::users::dsl::users;
 
@@ -158,7 +158,7 @@ pub fn get_posts_by_user(
 pub fn get_post_with_user(
     conn: &mut PgConnection,
     post_id: i32,
-) -> actix_web::Result<PostPublic, DbError> {
+) -> actix_web::Result<PostPublic, WebError> {
     use crate::schema::posts as schema_posts;
     use crate::schema::users as schema_users;
 

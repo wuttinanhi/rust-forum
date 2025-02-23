@@ -16,6 +16,7 @@ use rust_forum::comments::routes::{
 };
 use rust_forum::db::run_migrations;
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
+use rust_forum::routes::error_handler::error_handler;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,
     users_resetpassword_post_route, users_resetpassword_route, users_resetpasswordtoken_post_route,
@@ -36,8 +37,8 @@ use rust_forum::{
 };
 
 use actix_files as fs;
-use actix_web::middleware::NormalizePath;
 use actix_web::middleware::TrailingSlash;
+use actix_web::middleware::{ErrorHandlers, NormalizePath};
 use dotenv::dotenv;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
@@ -238,6 +239,7 @@ async fn main() -> std::io::Result<()> {
             .service(fs::Files::new("/static", "./static"))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
+            .wrap(ErrorHandlers::new().default_handler(error_handler))
             .service(users_scope)
             .service(posts_scope)
             .service(comments_scope)
