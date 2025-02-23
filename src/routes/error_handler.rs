@@ -35,12 +35,12 @@ pub fn error_handler<B>(mut service_res: ServiceResponse<B>) -> Result<ErrorHand
 
         dbg!(&session_result);
 
-        let response = HttpResponse::Found()
-            .append_header((LOCATION, referer))
-            .finish();
+        // let new_res = HttpResponse::Found()
+        //     .append_header((LOCATION, referer))
+        //     .finish();
 
-        // *res.status_mut() = StatusCode::FOUND;
-        // res.headers_mut().insert(LOCATION, referer.parse().unwrap());
+        *res.status_mut() = StatusCode::FOUND;
+        res.headers_mut().insert(LOCATION, referer.parse().unwrap());
 
         // let modified_headers = res.headers();
 
@@ -50,9 +50,14 @@ pub fn error_handler<B>(mut service_res: ServiceResponse<B>) -> Result<ErrorHand
         // response.append_header((LOCATION, referer));
         // let response_finish = response.finish();
 
+        // return Ok(ErrorHandlerResponse::Response(ServiceResponse::new(
+        //     req,
+        //     new_res.map_into_right_body(),
+        // )));
+
         return Ok(ErrorHandlerResponse::Response(ServiceResponse::new(
             req,
-            response.map_into_right_body(),
+            res.map_into_left_body(),
         )));
     }
 

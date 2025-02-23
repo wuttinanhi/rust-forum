@@ -230,6 +230,7 @@ async fn main() -> std::io::Result<()> {
 
         // --- init app ---
         App::new()
+            .wrap(ErrorHandlers::new().default_handler(error_handler))
             .app_data(db_ref.clone())
             .app_data(handlebars_ref.clone())
             .wrap(RateLimiter::default())
@@ -239,7 +240,6 @@ async fn main() -> std::io::Result<()> {
             .service(fs::Files::new("/static", "./static"))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
-            .wrap(ErrorHandlers::new().default_handler(error_handler))
             .service(users_scope)
             .service(posts_scope)
             .service(comments_scope)

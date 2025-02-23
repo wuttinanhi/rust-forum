@@ -133,8 +133,6 @@ pub async fn users_register_route(
     update_handlebars_data(&mut data, "title", json!("Register"));
     handle_flash_message(&mut data, &session);
 
-    dbg!(&data);
-
     let body = hb.render("users/register", &data).unwrap();
 
     Ok(HttpResponse::Ok().body(body))
