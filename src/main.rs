@@ -141,14 +141,25 @@ async fn main() -> std::io::Result<()> {
         let handlebars_ref = web::Data::new(handlebars);
 
         // --- cookie session middleware ---
-        let cookie_secure = std::env::var("COOKIE_SECURE")
-            .map(|val| val == "true")
-            .unwrap_or(false);
+        let cookie_secure = true;
+        // std::env::var("COOKIE_SECURE")
+        //     .map(|val| val == "true")
+        //     .unwrap_or(false);
+
+        let cookie_key_str = std::env::var("COOKIE_KEY").unwrap_or_else(|_| {
+            if cfg!(debug_assertions) {
+                // Fallback for development
+                "dev-cookie-key-1234567890-dev-cookie-key-1234567890-dev-cookie-key-1234567890"
+                    .to_string()
+            } else {
+                // released build
+                panic!("COOKIE_KEY environment variable must be set in production!")
+            }
+        });
 
         let cookie_key = Key::from(
             // must be 64 bytes long
-            "dev-cookie-key-1234567890-dev-cookie-key-1234567890-dev-cookie-key-1234567890"
-                .as_bytes(),
+            cookie_key_str.as_bytes(),
         );
 
         let cookie_store = CookieSessionStore::default();
@@ -238,6 +249,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(MultipartFormConfig::default().error_handler(handle_multipart_error))
             .wrap(NormalizePath::new(TrailingSlash::Trim))
             .service(fs::Files::new("/static", "./static"))
+            .app_data(web::PayloadConfig::new(50_000))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
             .service(users_scope)
@@ -245,6 +257,7 @@ async fn main() -> std::io::Result<()> {
             .service(comments_scope)
             // .service(test_pagination)
             .route("/", web::to(index_list_posts_route))
+            .route("testz", web::to(test_actix_val_route))
     })
     .bind((host, port))?
     // .workers(1)
@@ -259,4 +272,22 @@ fn handle_multipart_error(
 ) -> actix_web::Error {
     let response = HttpResponse::BadRequest().force_close().finish();
     actix_web::error::InternalError::from_response(err, response).into()
+}
+
+use actix_web_validator::Query;
+use serde::Deserialize;
+use validator::Validate;
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct AuthRequest {
+    #[validate(range(min = 1000, max = 9999))]
+    id: u64,
+}
+
+// Use `Query` extractor for query information (and destructure it within the signature).
+// This handler gets called only if the request's query string contains a `id` and
+// `response_type` fields.
+// The correct request for this handler would be `/index.html?id=1234&response_type=Code"`.
+pub async fn test_actix_val_route(info: Query<AuthRequest>) -> String {
+    format!("Authorization request for client with id={}!", info.id)
 }

@@ -105,7 +105,7 @@ pub async fn users_login_post_route(
         Err(_) => {
             let data = json!({
                 "parent": "base",
-                "error": "Error invalid credentials"
+                "error": "Invalid login"
             });
 
             let body = hb.render("users/login", &data).unwrap();

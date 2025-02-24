@@ -10,7 +10,7 @@ use serde_json::json;
 
 use crate::{
     comments::{repository::get_comments_with_user, types::ListCommentResult},
-    db::{WebError, DbPool},
+    db::{DbPool, WebError},
     posts::{
         dto::PostFormData,
         repository::{delete_post, update_post},
@@ -54,7 +54,7 @@ pub async fn create_post_route(
 #[post("/create")]
 pub async fn create_post_submit_route(
     pool: web::Data<DbPool>,
-    form: web::Form<PostFormData>,
+    form: actix_web_validator::Form<PostFormData>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     let user = get_session_user(&session)?;
@@ -247,7 +247,7 @@ pub async fn update_post_route(
 #[post("/update/{post_id}")]
 pub async fn update_post_submit_route(
     req: HttpRequest,
-    form: web::Form<PostFormData>,
+    form: actix_web_validator::Form<PostFormData>,
     pool: web::Data<DbPool>,
     path: web::Path<i32>,
     session: Session,

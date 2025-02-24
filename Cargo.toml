@@ -24,7 +24,7 @@ rand = "0.8.5"
 lettre = "0.11.11"
 diesel_migrations = "2.2.0"
 actix-web-validator = "6.0.0"
-validator = { version = "0.16", features = ["derive"] }
+validator = { version = "0.18", features = ["derive"] }
 
 [[bin]]
 name = "rustforum"
