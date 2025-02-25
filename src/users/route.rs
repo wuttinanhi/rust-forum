@@ -73,7 +73,7 @@ pub async fn users_login_route(
 #[post("/login")]
 pub async fn users_login_post_route(
     pool: web::Data<DbPool>,
-    form: web::Form<UserLoginFormData>,
+    form: actix_web_validator::Form<UserLoginFormData>,
     session: Session,
     hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
@@ -141,7 +141,7 @@ pub async fn users_register_route(
 #[post("/register")]
 pub async fn users_register_post_route(
     pool: web::Data<DbPool>,
-    form: web::Form<UserRegisterFormData>,
+    form: actix_web_validator::Form<UserRegisterFormData>,
     session: Session,
     hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
@@ -218,7 +218,7 @@ pub async fn users_settings_route(
 #[post("/changepassword")]
 pub async fn users_changepassword_post_route(
     pool: web::Data<DbPool>,
-    form: web::Form<UserChangePasswordFormData>,
+    form: actix_web_validator::Form<UserChangePasswordFormData>,
     session: Session,
     // hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
@@ -264,7 +264,7 @@ pub async fn users_changepassword_post_route(
 #[post("/update")]
 pub async fn users_update_data_post_route(
     pool: web::Data<DbPool>,
-    form: web::Form<UserUpdateFormData>,
+    form: actix_web_validator::Form<UserUpdateFormData>,
     session: Session,
     // hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
@@ -516,7 +516,7 @@ pub async fn users_resetpassword_route(
 #[post("/resetpassword")]
 pub async fn users_resetpassword_post_route(
     pool: web::Data<DbPool>,
-    form: web::Form<UserPasswordResetRequest>,
+    form: actix_web_validator::Form<UserPasswordResetRequest>,
     session: Session,
     req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
@@ -583,7 +583,7 @@ pub async fn users_resetpasswordtoken_route(
 #[post("/resetpasswordtoken")]
 pub async fn users_resetpasswordtoken_post_route(
     pool: web::Data<DbPool>,
-    form: web::Form<UserPasswordResetTokenRequest>,
+    form: actix_web_validator::Form<UserPasswordResetTokenRequest>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     validate_input_user_password!(&form.new_password);

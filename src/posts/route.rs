@@ -231,7 +231,7 @@ pub async fn update_post_route(
         "parent": "base",
         "title": format!("Update post : {}", post.post.title),
         "form_header": format!("Update post : {}", post.post.title),
-          "form_action": format!("/posts/update/{}", post.post.id),
+        "form_action": format!("/posts/update/{}", post.post.id),
         "form_submit_button_text": "Update",
     });
 

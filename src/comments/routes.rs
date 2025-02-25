@@ -10,7 +10,7 @@ use serde_json::json;
 
 use crate::{
     comments::repository::get_page_where_comment_at,
-    db::{WebError, DbPool},
+    db::{DbPool, WebError},
     models::Comment,
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
@@ -27,7 +27,7 @@ use super::repository::{create_comment, delete_comment, get_comment, update_comm
 #[post("/create")]
 pub async fn create_comment_submit_route(
     pool: web::Data<DbPool>,
-    form: web::Form<CreateCommentFormData>,
+    form: actix_web_validator::Form<CreateCommentFormData>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     let user = get_session_user(&session).map_err(actix_web::error::ErrorInternalServerError)?;
@@ -115,7 +115,7 @@ pub async fn update_comment_route(
 #[post("/update/{post_id}")]
 pub async fn update_comment_post_route(
     req: HttpRequest,
-    form: web::Form<UpdateCommentFormData>,
+    form: actix_web_validator::Form<UpdateCommentFormData>,
     pool: web::Data<DbPool>,
     path: web::Path<i32>,
     session: Session,
