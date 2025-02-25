@@ -5,8 +5,8 @@ use validator::Validate;
 pub struct PostFormData {
     #[validate(length(
         min = 1,
-        max = 100,
-        message = "Title must be at least 1 character and max 100"
+        max = 50,
+        message = "Title must be at least 1 character and max 50"
     ))]
     pub title: String,
 

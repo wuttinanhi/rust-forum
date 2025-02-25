@@ -1,5 +1,6 @@
 use crate::utils::flash::{set_flash_message, FLASH_ERROR};
 use actix_session::SessionExt;
+use actix_web::error::UrlencodedError;
 use actix_web::{
     dev::ServiceResponse,
     http::{
@@ -27,7 +28,13 @@ pub fn error_handler<B>(service_res: ServiceResponse<B>) -> Result<ErrorHandlerR
 
         // dbg!(&referer);
 
-        let response_error_message = response_error.to_string();
+        let response_error_message;
+
+        if response_error.as_error::<UrlencodedError>().is_some() {
+            response_error_message = "url encode error".to_string();
+        } else {
+            response_error_message = response_error.to_string();
+        }
 
         set_flash_message(&session, FLASH_ERROR, &response_error_message)?;
 
