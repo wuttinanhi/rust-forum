@@ -27,6 +27,7 @@ actix-web-validator = "6.0.0"
 validator = { version = "0.18", features = ["derive"] }
 lazy_static = "1.5.0"
 regex = "1.11.1"
+async-trait = "0.1.86"
 
 [[bin]]
 name = "rustforum"

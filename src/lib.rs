@@ -8,6 +8,8 @@ pub mod db;
 pub mod posts;
 pub mod users;
 pub mod utils;
+pub mod entities;
+pub mod repositories;
 
 use diesel::{Connection, PgConnection};
 use std::env;
