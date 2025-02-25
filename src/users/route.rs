@@ -31,7 +31,7 @@ use crate::{
         session::handlebars_add_user,
         users::get_session_user,
     },
-    validate_input_user_name, validate_input_user_password, validate_password_and_confirm_password,
+    validate_password_and_confirm_password,
 };
 
 use super::dto::{
@@ -77,8 +77,6 @@ pub async fn users_login_post_route(
     session: Session,
     hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
-    validate_input_user_password!(&form.password);
-
     // use web::block to offload blocking Diesel queries without blocking server thread
     let user_result = web::block(move || {
         // note that obtaining a connection from the pool is also potentially blocking
@@ -148,9 +146,6 @@ pub async fn users_register_post_route(
     let hb_data = json!({
         "parent": "base",
     });
-
-    validate_input_user_name!(&form.name);
-    validate_input_user_password!(&form.password);
 
     let create_user_result = web::block(move || {
         let mut conn = pool.get()?;
@@ -224,8 +219,6 @@ pub async fn users_changepassword_post_route(
 ) -> actix_web::Result<impl Responder> {
     let session_user = get_session_user(&session)?;
 
-    validate_input_user_password!(&form.confirm_password);
-
     validate_password_and_confirm_password!(form);
 
     let user = web::block(move || {
@@ -269,8 +262,6 @@ pub async fn users_update_data_post_route(
     // hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
     let session_user = get_session_user(&session)?;
-
-    validate_input_user_name!(&form.new_name);
 
     let user = web::block(move || {
         let mut conn = pool.get()?;
@@ -586,7 +577,6 @@ pub async fn users_resetpasswordtoken_post_route(
     form: actix_web_validator::Form<UserPasswordResetTokenRequest>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    validate_input_user_password!(&form.new_password);
     validate_password_and_confirm_password!(form);
 
     let result = web::block(move || {

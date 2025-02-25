@@ -16,28 +16,6 @@ pub fn get_session_user(session: &Session) -> Result<UserPublic, actix_web::Erro
 }
 
 #[macro_export]
-macro_rules! validate_input_user_name {
-    ($name:expr) => {
-        if $name.len() < 3 || $name.len() > 15 {
-            return Err(actix_web::error::ErrorBadRequest(
-                "Invalid username length! (name must be between 3 and 15 characters)",
-            ));
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! validate_input_user_password {
-    ($password:expr) => {
-        if $password.len() < 3 || $password.len() > 128 {
-            return Err(actix_web::error::ErrorBadRequest(
-                "Invalid password length! (password must be between 3 and 128 characters)",
-            ));
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! validate_password_and_confirm_password {
     ($form:expr) => {{
         let new_password_and_confirm_password_equal = $form.new_password == $form.confirm_password;
