@@ -42,6 +42,7 @@ use actix_web::middleware::{ErrorHandlers, NormalizePath};
 use dotenv::dotenv;
 
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/");
 
 #[actix_web::main]
@@ -257,7 +258,6 @@ async fn main() -> std::io::Result<()> {
             .service(comments_scope)
             // .service(test_pagination)
             .route("/", web::to(index_list_posts_route))
-            .route("testz", web::to(test_actix_val_route))
     })
     .bind((host, port))?
     // .workers(1)
@@ -272,22 +272,4 @@ fn handle_multipart_error(
 ) -> actix_web::Error {
     let response = HttpResponse::BadRequest().force_close().finish();
     actix_web::error::InternalError::from_response(err, response).into()
-}
-
-use actix_web_validator::Query;
-use serde::Deserialize;
-use validator::Validate;
-
-#[derive(Debug, Deserialize, Validate)]
-pub struct AuthRequest {
-    #[validate(range(min = 1000, max = 9999))]
-    id: u64,
-}
-
-// Use `Query` extractor for query information (and destructure it within the signature).
-// This handler gets called only if the request's query string contains a `id` and
-// `response_type` fields.
-// The correct request for this handler would be `/index.html?id=1234&response_type=Code"`.
-pub async fn test_actix_val_route(info: Query<AuthRequest>) -> String {
-    format!("Authorization request for client with id={}!", info.id)
 }
