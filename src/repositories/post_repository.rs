@@ -71,7 +71,7 @@ impl PostRepository for PostgresPostRepository {
         post_title: &str,
         post_body: &str,
     ) -> Result<Post, Self::Error> {
-        use crate::schema::posts::dsl::*;
+        use crate::schema::posts::table as post_table;
 
         let conn = &mut self.pool.get()?;
 
@@ -82,7 +82,7 @@ impl PostRepository for PostgresPostRepository {
             user_id: owner_user_id,
         };
 
-        let new_post = diesel::insert_into(crate::schema::posts::table)
+        let new_post = diesel::insert_into(post_table)
             .values(&new_post_data)
             .returning(Post::as_returning())
             .get_result(conn)?;
@@ -197,17 +197,19 @@ impl PostRepository for PostgresPostRepository {
         target_user_id: i32,
         pagination: &QueryPagination,
     ) -> Result<ListPostResult, Self::Error> {
-        use crate::schema::posts::dsl::{created_at, deleted_at, posts, user_id};
+        // use crate::schema::posts::dsl::{created_at, deleted_at, posts, user_id};
+
+        use crate::schema::posts::dsl as post_dsl;
         use crate::schema::posts::table as post_table;
-        use crate::schema::users::dsl::users;
+        use crate::schema::users::dsl as user_dsl;
 
         let conn = &mut self.pool.get()?;
 
-        let posts_raw = posts
-            .inner_join(users)
-            .filter(user_id.eq(target_user_id))
-            .filter(deleted_at.is_null())
-            .order(created_at.desc())
+        let posts_raw = post_dsl::posts
+            .inner_join(user_dsl::users)
+            .filter(post_dsl::user_id.eq(target_user_id))
+            .filter(post_dsl::deleted_at.is_null())
+            .order(post_dsl::created_at.desc())
             .limit(pagination.limit)
             .offset(pagination.get_offset())
             .select((Post::as_select(), User::as_select()))
@@ -224,8 +226,8 @@ impl PostRepository for PostgresPostRepository {
             .collect();
 
         let total_posts = post_table
-            .filter(user_id.eq(target_user_id))
-            .filter(deleted_at.is_null())
+            .filter(post_dsl::user_id.eq(target_user_id))
+            .filter(post_dsl::deleted_at.is_null())
             .count()
             .get_result::<i64>(conn)?;
 
