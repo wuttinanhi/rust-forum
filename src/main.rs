@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix_cors::Cors;
 use actix_limitation::{Limiter, RateLimiter};
 use actix_multipart::form::MultipartFormConfig;
@@ -16,6 +18,7 @@ use rust_forum::comments::routes::{
 };
 use rust_forum::db::run_migrations;
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
+use rust_forum::repositories::comment_repository::PostgresCommentRepository;
 use rust_forum::routes::error_handler::error_handler;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,
@@ -67,8 +70,19 @@ async fn main() -> std::io::Result<()> {
     // --- database setup ---
     let db_pool = initialize_db_pool();
 
+    let db_pool = Arc::new(db_pool);
+
+    let post_repo = PostgresCommentRepository::new(db_pool.clone());
+    let post_repo_web_data = actix_web::web::Data::new(post_repo);
+
+    let comment_repo = PostgresCommentRepository::new(db_pool.clone());
+    let comment_repo_web_data = actix_web::web::Data::new(comment_repo);
+
+    let migration_conn = db_pool.clone();
     {
-        let mut conn = db_pool.get().expect("faild to get migration connection");
+        let mut conn = migration_conn
+            .get()
+            .expect("faild to get migration connection");
         let _ = run_migrations(&mut conn, MIGRATIONS);
     }
 
@@ -244,6 +258,10 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(ErrorHandlers::new().default_handler(error_handler))
             .app_data(db_ref.clone())
+            // --- repository ---
+            .app_data(post_repo_web_data.clone())
+            .app_data(comment_repo_web_data.clone())
+            // ---
             .app_data(handlebars_ref.clone())
             .wrap(RateLimiter::default())
             .app_data(limiter.clone())
@@ -253,9 +271,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::PayloadConfig::new(50_000))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
+            // --- route ---
             .service(users_scope)
             .service(posts_scope)
             .service(comments_scope)
+            // ---
             // .service(test_pagination)
             .route("/", web::to(index_list_posts_route))
     })

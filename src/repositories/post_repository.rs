@@ -59,6 +59,12 @@ pub struct PostgresPostRepository {
     pool: Arc<Pool<ConnectionManager<PgConnection>>>,
 }
 
+impl PostgresPostRepository {
+    pub fn new(pool: Arc<Pool<ConnectionManager<PgConnection>>>) -> Self {
+        Self { pool }
+    }
+}
+
 impl PostRepository for PostgresPostRepository {
     type Error = WebError;
 

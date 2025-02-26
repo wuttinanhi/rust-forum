@@ -71,11 +71,11 @@ pub fn update_comment(
 
 pub fn delete_comment(
     conn: &mut PgConnection,
-    target_post_id: i32,
+    target_comment_id: i32,
 ) -> actix_web::Result<usize, WebError> {
     use crate::schema::comments::dsl::*;
 
-    let delete_usize = diesel::update(comments.find(target_post_id))
+    let delete_usize = diesel::update(comments.find(target_comment_id))
         .set(deleted_at.eq(diesel::dsl::now))
         .execute(conn)?;
 
