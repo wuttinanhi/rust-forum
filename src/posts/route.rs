@@ -54,9 +54,6 @@ pub async fn create_post_route(
 
 #[post("/create")]
 pub async fn create_post_submit_route(
-    // post_repo: web::Data<dyn PostRepository<Error = WebError>>,
-    // post_repo: web::Data<PostRepository>,
-    // post_repo: web::Data<dyn PostRepository<Error = WebError>>,
     post_repo: web::Data<std::sync::Arc<dyn PostRepository<Error = WebError>>>,
     form: actix_web_validator::Form<PostFormData>,
     session: Session,
