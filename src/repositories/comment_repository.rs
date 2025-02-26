@@ -7,7 +7,7 @@ use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableHelper};
 use std::sync::Arc;
 
-pub trait CommentRepository {
+pub trait CommentRepository: Send + Sync {
     type Error;
 
     /// Creates a new comment

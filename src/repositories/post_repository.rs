@@ -10,7 +10,8 @@ use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, SelectableH
 
 use crate::entities::post::{ListPostResult, PostPublic};
 
-pub trait PostRepository {
+pub trait PostRepository: Send + Sync {
+    // type Error;
     type Error;
 
     /// Creates a new post

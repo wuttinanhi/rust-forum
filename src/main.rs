@@ -16,9 +16,10 @@ use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::comments::routes::{
     delete_comment_route, update_comment_post_route, update_comment_route,
 };
-use rust_forum::db::run_migrations;
+use rust_forum::db::{run_migrations, WebError};
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
-use rust_forum::repositories::comment_repository::PostgresCommentRepository;
+use rust_forum::repositories::comment_repository::{CommentRepository, PostgresCommentRepository};
+use rust_forum::repositories::post_repository::{PostRepository, PostgresPostRepository};
 use rust_forum::routes::error_handler::error_handler;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,
@@ -52,7 +53,9 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/");
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
-    std::env::set_var("RUST_LOG", "info");
+    // FOR ENABLE DEBUGGING
+    std::env::set_var("RUST_LOG", "debug");
+
     env_logger::init();
 
     // get mode from env
@@ -70,15 +73,24 @@ async fn main() -> std::io::Result<()> {
     // --- database setup ---
     let db_pool = initialize_db_pool();
 
-    let db_pool = Arc::new(db_pool);
+    let db_pool_arc = Arc::new(db_pool.clone());
 
-    let post_repo = PostgresCommentRepository::new(db_pool.clone());
-    let post_repo_web_data = actix_web::web::Data::new(post_repo);
+    let post_repo = PostgresPostRepository::new(db_pool_arc.clone());
+    let post_repo_web_data: actix_web::web::Data<Arc<dyn PostRepository<Error = WebError>>> =
+        actix_web::web::Data::new(Arc::new(post_repo));
+    // optional after Arc::new
+    // as Arc<dyn PostRepository<Error = WebError>>
 
-    let comment_repo = PostgresCommentRepository::new(db_pool.clone());
-    let comment_repo_web_data = actix_web::web::Data::new(comment_repo);
+    let comment_repo = PostgresCommentRepository::new(db_pool_arc.clone());
+    let comment_repo_web_data: actix_web::web::Data<Arc<dyn CommentRepository<Error = WebError>>> =
+        actix_web::web::Data::new(Arc::new(comment_repo));
 
-    let migration_conn = db_pool.clone();
+    // this is not equal
+    // let comment_repo_web_data: Data<Arc<dyn CommentRepository<Error = Box<dyn Error + Send + Sync>>>>
+    // let comment_repo_web_data: Data<Arc<PostgresCommentRepository>>
+    // the web::Data in route will unable to extract if no type annotate specify
+
+    let migration_conn = db_pool_arc.clone();
     {
         let mut conn = migration_conn
             .get()
@@ -113,34 +125,13 @@ async fn main() -> std::io::Result<()> {
 
         let cors_origins_split = cors_origins_split.clone();
 
-        // let db = initialize_db_pool();
+        // init db ref
         let db_ref = web::Data::new(db_pool.clone());
 
         // --- handlebars setup ---
         let mut handlebars = Handlebars::new();
 
         handlebars.register_helper("pagination", Box::new(handlebars_pagination_helper));
-
-        // handlebars.register_helper(
-        //     "eq",
-        //     Box::new(
-        //         |h: &handlebars::Helper,
-        //          _: &handlebars::Handlebars,
-        //          _: &handlebars::Context,
-        //          _: &mut handlebars::RenderContext,
-        //          out: &mut dyn handlebars::Output|
-        //          -> handlebars::HelperResult {
-        //             let param1 = h.param(0).unwrap().value();
-        //             let param2 = h.param(1).unwrap().value();
-        //             if param1 == param2 {
-        //                 out.write("true")?;
-        //             } else {
-        //                 out.write("false")?;
-        //             }
-        //             Ok(())
-        //         },
-        //     ),
-        // );
 
         // set handlebars options
         let mut handlebars_options = DirectorySourceOptions::default();
@@ -258,10 +249,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(ErrorHandlers::new().default_handler(error_handler))
             .app_data(db_ref.clone())
-            // --- repository ---
-            .app_data(post_repo_web_data.clone())
-            .app_data(comment_repo_web_data.clone())
-            // ---
             .app_data(handlebars_ref.clone())
             .wrap(RateLimiter::default())
             .app_data(limiter.clone())
@@ -271,12 +258,13 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::PayloadConfig::new(50_000))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
+            // --- repository ---
+            .app_data(post_repo_web_data.clone())
+            .app_data(comment_repo_web_data.clone())
             // --- route ---
             .service(users_scope)
             .service(posts_scope)
             .service(comments_scope)
-            // ---
-            // .service(test_pagination)
             .route("/", web::to(index_list_posts_route))
     })
     .bind((host, port))?
