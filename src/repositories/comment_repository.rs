@@ -56,6 +56,8 @@ pub trait CommentRepository: Send + Sync {
     ) -> Result<i64, Self::Error>;
 }
 
+pub type CommentRepositoryWithError = dyn CommentRepository<Error = WebError>;
+
 pub struct PostgresCommentRepository {
     pool: Arc<Pool<ConnectionManager<PgConnection>>>,
 }

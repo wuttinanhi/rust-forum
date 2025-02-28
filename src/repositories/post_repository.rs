@@ -56,6 +56,9 @@ pub trait PostRepository: Send + Sync {
     fn get_post_with_user(&self, post_id: i32) -> Result<PostPublic, Self::Error>;
 }
 
+// pub trait PostRepositoryWithError: PostRepository<Error = WebError> {}
+pub type PostRepositoryWithError = dyn PostRepository<Error = WebError>;
+
 pub struct PostgresPostRepository {
     pool: Arc<Pool<ConnectionManager<PgConnection>>>,
 }

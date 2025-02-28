@@ -16,7 +16,6 @@ use crate::{
         repository::{delete_post, update_post},
         types::PostPublic,
     },
-    repositories::post_repository::PostRepository,
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
@@ -25,6 +24,7 @@ use crate::{
         session::handlebars_add_user,
         users::get_session_user,
     },
+    AppKit,
 };
 
 use crate::posts::repository::get_post_with_user;
@@ -54,19 +54,16 @@ pub async fn create_post_route(
 
 #[post("/create")]
 pub async fn create_post_submit_route(
-    post_repo: web::Data<std::sync::Arc<dyn PostRepository<Error = WebError>>>,
+    // post_repo: web::Data<std::sync::Arc<dyn PostRepository<Error = WebError>>>,
+    app_kit: web::Data<AppKit>,
     form: actix_web_validator::Form<PostFormData>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     let user = get_session_user(&session)?;
 
-    let post_repo_clone = post_repo.clone();
-
-    // let post_repo_clone = post_repo.clone();
     let create_post_result = web::block(move || {
-        // create post
-        post_repo_clone
-            .clone()
+        app_kit
+            .post_repository
             .create_post(user.id, &form.title, &form.body)
     })
     .await?;

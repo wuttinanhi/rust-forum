@@ -16,10 +16,11 @@ use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::comments::routes::{
     delete_comment_route, update_comment_post_route, update_comment_route,
 };
-use rust_forum::db::{run_migrations, WebError};
+use rust_forum::db::run_migrations;
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
-use rust_forum::repositories::comment_repository::{CommentRepository, PostgresCommentRepository};
-use rust_forum::repositories::post_repository::{PostRepository, PostgresPostRepository};
+use rust_forum::repositories::comment_repository::PostgresCommentRepository;
+use rust_forum::repositories::post_repository::PostgresPostRepository;
+use rust_forum::repositories::user_repository::{PostgresUserRepository, UserRepository};
 use rust_forum::routes::error_handler::error_handler;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,
@@ -28,6 +29,7 @@ use rust_forum::users::route::{
     users_view_profile_route,
 };
 use rust_forum::utils::pagination::handlebars_pagination_helper;
+use rust_forum::AppKit;
 use rust_forum::{
     comments::routes::create_comment_submit_route,
     db::initialize_db_pool,
@@ -54,7 +56,7 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
     // FOR ENABLE DEBUGGING
-    std::env::set_var("RUST_LOG", "debug");
+    // std::env::set_var("RUST_LOG", "debug");
 
     env_logger::init();
 
@@ -75,20 +77,30 @@ async fn main() -> std::io::Result<()> {
 
     let db_pool_arc = Arc::new(db_pool.clone());
 
-    let post_repo = PostgresPostRepository::new(db_pool_arc.clone());
-    let post_repo_web_data: actix_web::web::Data<Arc<dyn PostRepository<Error = WebError>>> =
-        actix_web::web::Data::new(Arc::new(post_repo));
-    // optional after Arc::new
-    // as Arc<dyn PostRepository<Error = WebError>>
-
-    let comment_repo = PostgresCommentRepository::new(db_pool_arc.clone());
-    let comment_repo_web_data: actix_web::web::Data<Arc<dyn CommentRepository<Error = WebError>>> =
-        actix_web::web::Data::new(Arc::new(comment_repo));
-
     // this is not equal
     // let comment_repo_web_data: Data<Arc<dyn CommentRepository<Error = Box<dyn Error + Send + Sync>>>>
     // let comment_repo_web_data: Data<Arc<PostgresCommentRepository>>
     // the web::Data in route will unable to extract if no type annotate specify
+
+    let post_repo = PostgresPostRepository::new(db_pool_arc.clone());
+    // let post_repo_web_data: actix_web::web::Data<Arc<dyn PostRepository<Error = WebError>>> =
+    //     actix_web::web::Data::new(Arc::new(post_repo));
+    // optional after Arc::new
+    // as Arc<dyn PostRepository<Error = WebError>>
+
+    let comment_repo = PostgresCommentRepository::new(db_pool_arc.clone());
+    // let comment_repo_web_data: actix_web::web::Data<Arc<dyn CommentRepository<Error = WebError>>> =
+    //     actix_web::web::Data::new(Arc::new(comment_repo));
+
+    let user_repo = PostgresUserRepository::new(db_pool_arc.clone());
+
+    let app_kit = AppKit {
+        post_repository: Arc::new(post_repo),
+        comment_repository: Arc::new(comment_repo),
+        user_repository: Arc::new(user_repo),
+    };
+
+    let app_kit_web_data = web::Data::new(app_kit.clone());
 
     let migration_conn = db_pool_arc.clone();
     {
@@ -258,9 +270,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::PayloadConfig::new(50_000))
             .wrap(cors_middleware)
             .wrap(cookie_session_middleware)
+            // app kit
+            .app_data(app_kit_web_data.clone())
             // --- repository ---
-            .app_data(post_repo_web_data.clone())
-            .app_data(comment_repo_web_data.clone())
+            // .app_data(post_repo_web_data.clone())
+            // .app_data(comment_repo_web_data.clone())
             // --- route ---
             .service(users_scope)
             .service(posts_scope)
