@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
 use actix_multipart::form::{tempfile::TempFile, MultipartForm};
+use bcrypt::verify;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -149,4 +150,8 @@ impl FromRequest for OptionalFetchMode {
 
         ready(Ok(OptionalFetchMode(fetch_mode_or)))
     }
+}
+
+pub fn validate_user_password(user: &User, user_password: &str) -> bool {
+    verify(user_password, &user.password).unwrap_or(false)
 }

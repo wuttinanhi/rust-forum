@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use bcrypt::{hash, verify, DEFAULT_COST};
-use chrono::{Duration, Utc};
+use bcrypt::{hash, DEFAULT_COST};
+use chrono::Utc;
 use diesel::{
     query_dsl::methods::FilterDsl,
     r2d2::{ConnectionManager, Pool},
@@ -10,51 +10,73 @@ use diesel::{
 
 use crate::{
     db::WebError,
-    entities::user::{user_to_user_public, UserPublic},
-    models::{NewPasswordReset, NewUser, PasswordReset, UpdateUserNameAndProfilePicture, User},
-    utils::token::generate_random_token,
+    entities::user::{user_to_user_public, validate_user_password, UserPublic},
+    models::{NewUser, PasswordReset, UpdateUserNameAndProfilePicture, User},
 };
 
-pub trait UserRepository: Send + Sync {
+use super::token_repository::TokenRepository;
+
+/// Trait defining the interface for user-related operations in the repository.
+/// Requires implementation of Send + Sync for thread safety.
+pub trait UserRepository: Send + Sync + 'static {
+    /// The error type that will be returned by operations in this repository
     type Error;
 
+    /// Creates a new user with the given name, email, and password
     fn create_user(&self, name: &str, email: &str, password: &str) -> Result<User, Self::Error>;
+
+    /// Authenticates a user with email and password
     fn login_user(&self, email: &str, password: &str) -> Result<User, Self::Error>;
+
+    /// Retrieves a user by their ID
     fn get_user_by_id(&self, user_id: i32) -> Result<User, Self::Error>;
+
+    /// Retrieves a user by their email address
     fn get_user_by_email(&self, email: &str) -> Result<User, Self::Error>;
+
+    /// Gets a sanitized (public) version of a user by their ID
     fn get_user_sanitized_by_id(&self, user_id: i32) -> Result<UserPublic, Self::Error>;
+
+    /// Updates a user's password
     fn update_user_password(&self, user: &User, new_password: &str) -> Result<(), Self::Error>;
+
+    /// Updates a user's email address
     fn update_user_email(&self, user: &User, new_email: &str) -> Result<(), Self::Error>;
+
+    /// Updates a user's name and profile picture
     fn update_user_data(
         &self,
         user: &User,
         new_data: &UpdateUserNameAndProfilePicture,
     ) -> Result<(), Self::Error>;
+
+    /// Deletes a user from the system
     fn delete_user(&self, user: &User) -> Result<(), Self::Error>;
-    fn create_password_reset(&self, user: &User) -> Result<PasswordReset, Self::Error>;
-    fn get_password_reset_by_token(&self, token: &str) -> Result<PasswordReset, Self::Error>;
-    fn delete_password_reset(&self, password_reset: &PasswordReset) -> Result<(), Self::Error>;
-    fn delete_password_resets_for_user(&self, user: &User) -> Result<(), Self::Error>;
+
+    /// Updates a user's password using a password reset token
     fn update_user_password_from_reset(
         &self,
         password_reset: &PasswordReset,
         new_password: &str,
-    ) -> Result<(), Self::Error>;
+    ) -> Result<(), WebError>;
 }
 
 pub type UserRepositoryWithError = dyn UserRepository<Error = WebError>;
 
 pub struct PostgresUserRepository {
     pool: Arc<Pool<ConnectionManager<PgConnection>>>,
+    token_repository: Arc<dyn TokenRepository>,
 }
 
 impl PostgresUserRepository {
-    pub fn new(pool: Arc<Pool<ConnectionManager<PgConnection>>>) -> Self {
-        Self { pool }
-    }
-
-    fn validate_user_password(&self, user: &User, user_password: &str) -> bool {
-        verify(user_password, &user.password).unwrap_or(false)
+    pub fn new(
+        pool: Arc<Pool<ConnectionManager<PgConnection>>>,
+        token_repository: Arc<dyn TokenRepository>,
+    ) -> Self {
+        Self {
+            pool,
+            token_repository,
+        }
     }
 }
 
@@ -86,7 +108,7 @@ impl UserRepository for PostgresUserRepository {
         // Query the user by email
         let user: User = self.get_user_by_email(user_email)?;
 
-        let valid = self.validate_user_password(&user, user_password);
+        let valid = validate_user_password(&user, user_password);
 
         // Verify the password (you would replace this with actual hashing logic)
         if valid {
@@ -174,59 +196,6 @@ impl UserRepository for PostgresUserRepository {
         Ok(())
     }
 
-    fn create_password_reset(&self, user: &User) -> Result<PasswordReset, WebError> {
-        let mut conn = self.pool.get()?;
-
-        use crate::schema::password_resets::dsl::*;
-
-        // expire within 1 hour
-        let expire_time = chrono::Utc::now().naive_utc() + Duration::hours(1);
-        let token = generate_random_token(16);
-
-        let new_password_reset = NewPasswordReset {
-            user_id: user.id,
-            expires_at: expire_time,
-            reset_token: token,
-        };
-
-        let password_reset = diesel::insert_into(password_resets)
-            .values(&new_password_reset)
-            .returning(PasswordReset::as_returning())
-            .get_result(&mut conn)?;
-
-        Ok(password_reset)
-    }
-
-    fn get_password_reset_by_token(&self, target_token: &str) -> Result<PasswordReset, WebError> {
-        let mut conn = self.pool.get()?;
-
-        use crate::schema::password_resets::dsl::*;
-
-        let password_reset = password_resets
-            .filter(reset_token.eq(target_token))
-            .first(&mut conn)?;
-
-        Ok(password_reset)
-    }
-
-    fn delete_password_reset(&self, password_reset: &PasswordReset) -> Result<(), WebError> {
-        let mut conn = self.pool.get()?;
-
-        use crate::schema::password_resets::dsl::*;
-
-        diesel::delete(password_resets.filter(id.eq(password_reset.id))).execute(&mut conn)?;
-        Ok(())
-    }
-
-    fn delete_password_resets_for_user(&self, user: &User) -> Result<(), WebError> {
-        let mut conn = self.pool.get()?;
-
-        use crate::schema::password_resets::dsl::*;
-
-        diesel::delete(password_resets.filter(user_id.eq(user.id))).execute(&mut conn)?;
-        Ok(())
-    }
-
     fn update_user_password_from_reset(
         &self,
         password_reset: &PasswordReset,
@@ -240,7 +209,8 @@ impl UserRepository for PostgresUserRepository {
 
         self.update_user_password(&user, new_password)?;
 
-        self.delete_password_reset(password_reset)?;
+        self.token_repository
+            .delete_password_reset_records_for_user(user.id)?;
 
         Ok(())
     }
