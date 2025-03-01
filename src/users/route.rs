@@ -12,26 +12,24 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::{repository::get_comments_by_user, types::CommentPublic},
+    comments::types::CommentPublic,
     db::{DbPool, WebError},
     models::UpdateUserNameAndProfilePicture,
-    posts::{repository::get_posts_by_user, types::PostPublic},
+    posts::types::PostPublic,
     users::{
-        constants::SESSION_KEY_USER, repository::get_password_reset_by_token,
+        constants::SESSION_KEY_USER,
         types::user_to_user_public,
     },
     utils::{
-        email::send_email,
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
         http::{create_redirect, redirect_back},
         pagination::{
-            build_handlebars_pagination_result, HandlebarsPaginationResult, QueryPagination,
+            HandlebarsPaginationResult, QueryPagination,
         },
-        session::handlebars_add_user,
         users::get_session_user,
     },
-    validate_password_and_confirm_password,
+    validate_password_and_confirm_password, AppKit,
 };
 
 use super::dto::{
@@ -41,9 +39,7 @@ use super::dto::{
 };
 
 use super::repository::{
-    create_password_reset, create_user, get_user_by_email, get_user_by_id,
-    get_user_sanitized_by_id, login_user, update_user_data, update_user_password,
-    update_user_password_from_reset, validate_user_password,
+    get_user_by_id, validate_user_password,
 };
 
 #[get("/login")]
@@ -70,29 +66,21 @@ pub async fn users_login_route(
 
 #[post("/login")]
 pub async fn users_login_post_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     form: actix_web_validator::Form<UserLoginFormData>,
     session: Session,
     hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
-    // use web::block to offload blocking Diesel queries without blocking server thread
-    let user_result = web::block(move || {
-        // note that obtaining a connection from the pool is also potentially blocking
-        let mut conn = pool.get()?;
+    let login_result =
+        web::block(move || app_kit.user_service.login_user(&form.email, &form.password))
+            .await
+            .map_err(actix_web::error::ErrorInternalServerError)?;
 
-        login_user(&mut conn, &form.email, &form.password)
-    })
-    .await
-    .map_err(actix_web::error::ErrorInternalServerError)?;
-
-    // map diesel query errors to a 500 error response
-
-    match user_result {
+    match login_result {
         Ok(user) => {
-            // set session user value
-
             let user_public = user_to_user_public(&user);
 
+            // set session user value
             session.insert(SESSION_KEY_USER, user_public)?;
 
             Ok(create_redirect("/"))
@@ -136,30 +124,38 @@ pub async fn users_register_route(
 
 #[post("/register")]
 pub async fn users_register_post_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     form: actix_web_validator::Form<UserRegisterFormData>,
     session: Session,
     hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
-    let hb_data = json!({
+    let mut hb_data = json!({
         "parent": "base",
     });
 
     let create_user_result = web::block(move || {
-        let mut conn = pool.get()?;
-        create_user(&mut conn, &form.name, &form.email, &form.password)
+        app_kit
+            .user_service
+            .register_user(&form.name, &form.email, &form.password)
     })
     .await?;
 
-    if create_user_result.is_err() {
-        let body = hb.render("users/register", &hb_data).unwrap();
+    match create_user_result {
+        Ok(_) => {
+            set_flash_message(&session, "success", "Created user. you can now login!")?;
 
-        return Ok(HttpResponse::Ok().body(body));
+            Ok(create_redirect("/"))
+        }
+
+        Err(_) => {
+            set_flash_message(&session, FLASH_ERROR, "Failed to register user.")?;
+
+            handle_flash_message(&mut hb_data, &session);
+
+            let body = hb.render("users/register", &hb_data).unwrap();
+            Ok(HttpResponse::Ok().body(body))
+        }
     }
-
-    set_flash_message(&session, "success", "Created user. you can now login!")?;
-
-    Ok(create_redirect("/"))
 }
 
 #[post("/logout")]
@@ -174,32 +170,33 @@ pub async fn users_logout(session: Session) -> actix_web::Result<impl Responder>
 
 #[get("/settings")]
 pub async fn users_settings_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     let session_user = get_session_user(&session)?;
 
     let mut hb_data = json!({
+        "title": "User settings",
         "parent": "base"
     });
 
-    let user = web::block(move || {
-        let mut conn = pool.get()?;
+    let user_public_result = web::block(move || {
+        // // we need to get updated data from db
+        // get_user_sanitized_by_id(&mut conn, session_user.id)
+        //     .map_err(|_| WebError::from("User by session not found"))
 
-        // we need to get updated data from db
-        get_user_sanitized_by_id(&mut conn, session_user.id)
-            .map_err(|_| WebError::from("User by session not found"))
+        app_kit.user_service.get_user_by_id_public(session_user.id)
     })
     .await?;
 
-    match user {
+    match user_public_result {
         Ok(user) => update_handlebars_data(&mut hb_data, "user", json!(user)),
+
         Err(why) => set_flash_message(&session, FLASH_ERROR, &why.to_string())?,
     }
 
     handle_flash_message(&mut hb_data, &session);
-    update_handlebars_data(&mut hb_data, "title", json!("User settings"));
 
     let body = hb
         .render("users/settings", &hb_data)
@@ -210,10 +207,10 @@ pub async fn users_settings_route(
 
 #[post("/changepassword")]
 pub async fn users_changepassword_post_route(
+    app_kit: web::Data<AppKit>,
     pool: web::Data<DbPool>,
     form: actix_web_validator::Form<UserChangePasswordFormData>,
     session: Session,
-    // hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
     let session_user = get_session_user(&session)?;
 
@@ -235,13 +232,19 @@ pub async fn users_changepassword_post_route(
         // update user password
         let new_password = &form.confirm_password;
 
-        update_user_password(&mut conn, &user, new_password)
-            .map_err(|_| WebError::from("Failed to change password!"))
+        // update_user_password(&mut conn, &user, new_password)
+        //     .map_err(|_| WebError::from("Failed to change password!"))
+
+        app_kit
+            .user_service
+            .update_user_password(user.id, new_password)
+            .map_err(|_| WebError::from("failed to update user password"))
     })
     .await?;
 
     match user {
         Ok(_) => set_flash_message(&session, FLASH_SUCCESS, "Change user password completed!")?,
+
         Err(why) => set_flash_message(
             &session,
             FLASH_ERROR,
@@ -254,24 +257,19 @@ pub async fn users_changepassword_post_route(
 
 #[post("/update")]
 pub async fn users_update_data_post_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     form: actix_web_validator::Form<UserUpdateFormData>,
     session: Session,
-    // hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
     let session_user = get_session_user(&session)?;
 
     let user = web::block(move || {
-        let mut conn = pool.get()?;
-
         // get db user
-        let user = get_user_by_id(&mut conn, session_user.id)
-            .map_err(|_| WebError::from("User by session not found"))?;
+        let user = app_kit.user_service.get_user_by_id(session_user.id)?;
 
         // update user data
-        update_user_data(
-            &mut conn,
-            &user,
+        app_kit.user_service.update_user_data(
+            user.id,
             &UpdateUserNameAndProfilePicture {
                 name: Some(&form.new_name),
                 user_profile_picture_url: None,
@@ -281,7 +279,7 @@ pub async fn users_update_data_post_route(
     .await?;
 
     match user {
-        Ok(_) => set_flash_message(&session, FLASH_SUCCESS, "Updated user data!")?,
+        Ok(_) => set_flash_message(&session, FLASH_SUCCESS, "Updated user data")?,
 
         Err(why) => set_flash_message(
             &session,
@@ -295,7 +293,7 @@ pub async fn users_update_data_post_route(
 
 #[post("/profilepicture")]
 pub async fn users_profile_picture_upload_post_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     session: Session,
     MultipartForm(form): MultipartForm<UserUploadProfilePictureForm>,
 ) -> actix_web::Result<impl Responder> {
@@ -329,23 +327,25 @@ pub async fn users_profile_picture_upload_post_route(
             .persist(&file_path)
             .map_err(WebError::from)?;
 
-        let mut conn = pool.get().map_err(|_| WebError::from("Database error"))?;
-
         // add slash to make it accessible from client
         let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
 
-        let db_user = get_user_by_id(&mut conn, session_user.id)
+        let db_user = app_kit
+            .user_service
+            .get_user_by_id(session_user.id)
             .map_err(|_| WebError::from("User by session not found"))?;
 
         // update user data with new profile image url
-        update_user_data(
-            &mut conn,
-            &db_user,
-            &UpdateUserNameAndProfilePicture {
-                name: None,
-                user_profile_picture_url: Some(&user_profile_picture_url_pre_slash),
-            },
-        )?;
+        app_kit
+            .user_service
+            .update_user_data(
+                db_user.id,
+                &UpdateUserNameAndProfilePicture {
+                    name: None,
+                    user_profile_picture_url: Some(&user_profile_picture_url_pre_slash),
+                },
+            )
+            .map_err(|e| WebError::from(e.to_string()))?;
 
         println!(
             "user profile picture uploaded: {}",
@@ -385,18 +385,18 @@ impl FromRequest for OptionalFetchMode {
 
 // #[get("/profile/{user_id}/{fetch_mode:.*}")]
 pub async fn users_view_profile_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     session: Session,
-    hb: web::Data<Handlebars<'_>>,
     path: web::Path<(i32,)>,
     fetch_mode: OptionalFetchMode,
     pagination: QueryPagination,
+    hb: web::Data<Handlebars<'_>>,
 ) -> actix_web::Result<impl Responder> {
     let user_id = path.into_inner().0;
     let fetch_mode = fetch_mode.0;
     let fetch_mode_clone = fetch_mode.clone();
 
-    let mut hb_data = json!({
+    let hb_data = json!({
         "parent": "base",
     });
 
@@ -409,87 +409,88 @@ pub async fn users_view_profile_route(
     let user_created_comments_clone = user_created_comments.clone();
     let pagination_result_clone = pagination_result.clone();
 
-    let user_data = web::block(move || {
-        let mut conn = pool.get()?;
+    Ok(HttpResponse::InternalServerError())
 
-        let user_sanitized = get_user_sanitized_by_id(&mut conn, user_id)?;
+    // let user_data = web::block(move || {
+    //     let user_sanitized = app_kit.user_service.get_user_by_id_public(user_id)?;
+    //     // get_user_sanitized_by_id(&mut conn, user_id)?;
 
-        if fetch_mode_clone == "posts" {
-            let created_posts = get_posts_by_user(&mut conn, user_id, &pagination)?;
+    //     if fetch_mode_clone == "posts" {
+    //         let created_posts = get_posts_by_user(&mut conn, user_id, &pagination)?;
 
-            user_created_posts_clone
-                .lock()
-                .unwrap()
-                .extend(created_posts.posts);
+    //         user_created_posts_clone
+    //             .lock()
+    //             .unwrap()
+    //             .extend(created_posts.posts);
 
-            let pagination_result =
-                build_handlebars_pagination_result(created_posts.total, &pagination);
+    //         let pagination_result =
+    //             build_handlebars_pagination_result(created_posts.total, &pagination);
 
-            *pagination_result_clone.lock().unwrap() = pagination_result;
-        } else if fetch_mode_clone == "comments" {
-            let created_comments = get_comments_by_user(&mut conn, &user_id, &pagination)?;
+    //         *pagination_result_clone.lock().unwrap() = pagination_result;
+    //     } else if fetch_mode_clone == "comments" {
+    //         let created_comments = get_comments_by_user(&mut conn, &user_id, &pagination)?;
 
-            user_created_comments_clone
-                .lock()
-                .unwrap()
-                .extend(created_comments.comments);
+    //         user_created_comments_clone
+    //             .lock()
+    //             .unwrap()
+    //             .extend(created_comments.comments);
 
-            let pagination_result =
-                build_handlebars_pagination_result(created_comments.total, &pagination);
+    //         let pagination_result =
+    //             build_handlebars_pagination_result(created_comments.total, &pagination);
 
-            *pagination_result_clone.lock().unwrap() = pagination_result;
-        } else {
-            return Err(WebError::from("no fetch mode was provide"));
-        }
+    //         *pagination_result_clone.lock().unwrap() = pagination_result;
+    //     } else {
+    //         return Err(WebError::from("no fetch mode was provide"));
+    //     }
 
-        Ok(user_sanitized)
-    })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
+    //     Ok(user_sanitized)
+    // })
+    // .await?
+    // .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    update_handlebars_data(&mut hb_data, "profile_users", json!(user_data));
-    update_handlebars_data(
-        &mut hb_data,
-        "title",
-        json!(format!("Profile {}", user_data.name)),
-    );
+    // update_handlebars_data(&mut hb_data, "profile_users", json!(user_data));
+    // update_handlebars_data(
+    //     &mut hb_data,
+    //     "title",
+    //     json!(format!("Profile {}", user_data.name)),
+    // );
 
-    let profile_users_created_posts = &*user_created_posts.lock().unwrap();
-    update_handlebars_data(
-        &mut hb_data,
-        "profile_users_created_posts",
-        json!(profile_users_created_posts),
-    );
+    // let profile_users_created_posts = &*user_created_posts.lock().unwrap();
+    // update_handlebars_data(
+    //     &mut hb_data,
+    //     "profile_users_created_posts",
+    //     json!(profile_users_created_posts),
+    // );
 
-    let profile_users_created_comments = &*user_created_comments.lock().unwrap();
-    update_handlebars_data(
-        &mut hb_data,
-        "profile_users_created_comments",
-        json!(profile_users_created_comments),
-    );
+    // let profile_users_created_comments = &*user_created_comments.lock().unwrap();
+    // update_handlebars_data(
+    //     &mut hb_data,
+    //     "profile_users_created_comments",
+    //     json!(profile_users_created_comments),
+    // );
 
-    if fetch_mode == "posts" {
-        update_handlebars_data(&mut hb_data, "fetch_mode_posts", json!(true));
-    } else if fetch_mode == "comments" {
-        update_handlebars_data(&mut hb_data, "fetch_mode_comments", json!(true));
-    }
+    // if fetch_mode == "posts" {
+    //     update_handlebars_data(&mut hb_data, "fetch_mode_posts", json!(true));
+    // } else if fetch_mode == "comments" {
+    //     update_handlebars_data(&mut hb_data, "fetch_mode_comments", json!(true));
+    // }
 
-    let pagination_result_deref = &*(pagination_result.lock().unwrap());
+    // let pagination_result_deref = &*(pagination_result.lock().unwrap());
 
-    update_handlebars_data(
-        &mut hb_data,
-        "pagination_result",
-        json!(pagination_result_deref),
-    );
+    // update_handlebars_data(
+    //     &mut hb_data,
+    //     "pagination_result",
+    //     json!(pagination_result_deref),
+    // );
 
-    handle_flash_message(&mut hb_data, &session);
-    handlebars_add_user(&session, &mut hb_data)?;
+    // handle_flash_message(&mut hb_data, &session);
+    // handlebars_add_user(&session, &mut hb_data)?;
 
-    let body = hb
-        .render("users/profile", &hb_data)
-        .map_err(actix_web::error::ErrorInternalServerError)?;
+    // let body = hb
+    //     .render("users/profile", &hb_data)
+    //     .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    Ok(HttpResponse::Ok().body(body))
+    // Ok(HttpResponse::Ok().body(body))
 }
 
 #[get("/resetpassword")]
@@ -504,10 +505,10 @@ pub async fn users_resetpassword_route(
     }
 
     let mut data = json!({
+        "title": "Reset password",
         "parent": "base"
     });
 
-    update_handlebars_data(&mut data, "title", json!("Reset password"));
     handle_flash_message(&mut data, &session);
 
     let body = hb.render("users/resetpassword", &data).unwrap();
@@ -517,18 +518,22 @@ pub async fn users_resetpassword_route(
 
 #[post("/resetpassword")]
 pub async fn users_resetpassword_post_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     form: actix_web_validator::Form<UserPasswordResetRequest>,
     session: Session,
     req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let _ = web::block(move || {
-        let mut conn = pool.get()?;
+        // let mut conn = pool.get()?;
 
-        let target_reset_password_user = get_user_by_email(&mut conn, &form.email)
+        let target_reset_password_user = app_kit
+            .user_service
+            .get_user_by_email(&form.email)
             .map_err(|_| WebError::from("failed to get user"))?;
 
-        let password_reset = create_password_reset(&mut conn, &target_reset_password_user)?;
+        let password_reset = app_kit
+            .token_service
+            .create_password_reset(target_reset_password_user.id)?;
 
         #[allow(non_snake_case)]
         let APP_DOMAIN_URL = std::env::var("APP_DOMAIN_URL").expect("APP_DOMAIN_URL must be set");
@@ -539,12 +544,11 @@ pub async fn users_resetpassword_post_route(
         );
 
         let email_body = format!(
-            "you requested to reset password:
-<a href=\"{}\">{}</a>",
+            "you requested to reset password:\n<a href=\"{}\">{}</a>",
             password_reset_url, password_reset_url
         );
 
-        send_email(
+        app_kit.email_service.send_email(
             &target_reset_password_user.email,
             "Password reset instruction - Rust Forum",
             &email_body,
@@ -570,11 +574,11 @@ pub async fn users_resetpasswordtoken_route(
     query: web::Query<UserPasswordResetTokenQueryString>,
 ) -> actix_web::Result<impl Responder> {
     let mut data = json!({
+        "title": "Reset password with Token",
         "parent": "base",
         "token": query.token,
     });
 
-    update_handlebars_data(&mut data, "title", json!("Reset password with Token"));
     handle_flash_message(&mut data, &session);
 
     let body = hb.render("users/resetpasswordtoken", &data).unwrap();
@@ -584,25 +588,29 @@ pub async fn users_resetpasswordtoken_route(
 
 #[post("/resetpasswordtoken")]
 pub async fn users_resetpasswordtoken_post_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     form: actix_web_validator::Form<UserPasswordResetTokenRequest>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
     validate_password_and_confirm_password!(form);
 
-    let result = web::block(move || {
-        let mut conn = pool.get()?;
+    let result: Result<(), WebError> = web::block(move || {
+        let password_reset = app_kit
+            .token_service
+            .get_password_reset_by_token(&form.token)?;
 
-        let password_reset = get_password_reset_by_token(&mut conn, &form.token)?;
+        app_kit
+            .user_service
+            .update_user_password_from_reset(&password_reset, &form.new_password)
+            .map_err(|e| WebError::from(e.to_string()))?;
 
-        update_user_password_from_reset(&mut conn, &password_reset, &form.new_password)?;
-
-        Ok::<_, WebError>(())
+        Ok(())
     })
     .await?;
 
     match result {
         Ok(_) => set_flash_message(&session, FLASH_SUCCESS, "Successfully reset password!")?,
+
         Err(why) => set_flash_message(
             &session,
             FLASH_ERROR,

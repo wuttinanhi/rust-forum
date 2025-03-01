@@ -20,8 +20,10 @@ use rust_forum::db::run_migrations;
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
 use rust_forum::repositories::comment_repository::PostgresCommentRepository;
 use rust_forum::repositories::post_repository::PostgresPostRepository;
+use rust_forum::repositories::token_repository::PostgresTokenRepository;
 use rust_forum::repositories::user_repository::PostgresUserRepository;
 use rust_forum::routes::error_handler::error_handler;
+use rust_forum::services::user_service::BasedUserService;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,
     users_resetpassword_post_route, users_resetpassword_route, users_resetpasswordtoken_post_route,
@@ -92,12 +94,19 @@ async fn main() -> std::io::Result<()> {
     // let comment_repo_web_data: actix_web::web::Data<Arc<dyn CommentRepository<Error = WebError>>> =
     //     actix_web::web::Data::new(Arc::new(comment_repo));
 
+    let token_repo = PostgresTokenRepository::new(db_pool_arc.clone());
+
     let user_repo = PostgresUserRepository::new(db_pool_arc.clone());
+    let user_repo_arc = Arc::new(user_repo);
+
+    // service
+    let user_service = BasedUserService::new(user_repo_arc.clone(), Arc::new(token_repo));
 
     let app_kit = AppKit {
         post_repository: Arc::new(post_repo),
         comment_repository: Arc::new(comment_repo),
-        user_repository: Arc::new(user_repo),
+        user_repository: user_repo_arc.clone(),
+        user_service: Arc::new(user_service),
     };
 
     let app_kit_web_data = web::Data::new(app_kit.clone());

@@ -4,10 +4,12 @@ pub mod schema;
 pub mod routes;
 
 pub mod comments;
+pub mod controllers;
 pub mod db;
 pub mod entities;
 pub mod posts;
 pub mod repositories;
+pub mod services;
 pub mod users;
 pub mod utils;
 
@@ -15,6 +17,9 @@ use diesel::{Connection, PgConnection};
 use repositories::{
     comment_repository::CommentRepositoryWithError, post_repository::PostRepositoryWithError,
     user_repository::UserRepositoryWithError,
+};
+use services::{
+    email_service::EmailService, token_service::TokenService, user_service::UserService,
 };
 use std::{env, sync::Arc};
 
@@ -29,4 +34,10 @@ pub struct AppKit {
     pub post_repository: Arc<PostRepositoryWithError>,
     pub comment_repository: Arc<CommentRepositoryWithError>,
     pub user_repository: Arc<UserRepositoryWithError>,
+
+    pub token_service: Arc<dyn TokenService>,
+
+    pub user_service: Arc<dyn UserService>,
+
+    pub email_service: Arc<dyn EmailService>,
 }

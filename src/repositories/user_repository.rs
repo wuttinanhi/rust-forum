@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use bcrypt::{hash, DEFAULT_COST};
-use chrono::Utc;
 use diesel::{
     query_dsl::methods::FilterDsl,
     r2d2::{ConnectionManager, Pool},
@@ -11,10 +10,9 @@ use diesel::{
 use crate::{
     db::WebError,
     entities::user::{user_to_user_public, validate_user_password, UserPublic},
-    models::{NewUser, PasswordReset, UpdateUserNameAndProfilePicture, User},
+    models::{NewUser, UpdateUserNameAndProfilePicture, User},
 };
 
-use super::token_repository::TokenRepository;
 
 /// Trait defining the interface for user-related operations in the repository.
 /// Requires implementation of Send + Sync for thread safety.
@@ -52,31 +50,17 @@ pub trait UserRepository: Send + Sync + 'static {
 
     /// Deletes a user from the system
     fn delete_user(&self, user: &User) -> Result<(), Self::Error>;
-
-    /// Updates a user's password using a password reset token
-    fn update_user_password_from_reset(
-        &self,
-        password_reset: &PasswordReset,
-        new_password: &str,
-    ) -> Result<(), WebError>;
 }
 
 pub type UserRepositoryWithError = dyn UserRepository<Error = WebError>;
 
 pub struct PostgresUserRepository {
     pool: Arc<Pool<ConnectionManager<PgConnection>>>,
-    token_repository: Arc<dyn TokenRepository>,
 }
 
 impl PostgresUserRepository {
-    pub fn new(
-        pool: Arc<Pool<ConnectionManager<PgConnection>>>,
-        token_repository: Arc<dyn TokenRepository>,
-    ) -> Self {
-        Self {
-            pool,
-            token_repository,
-        }
+    pub fn new(pool: Arc<Pool<ConnectionManager<PgConnection>>>) -> Self {
+        Self { pool }
     }
 }
 
@@ -193,25 +177,6 @@ impl UserRepository for PostgresUserRepository {
         use crate::schema::users::dsl::*;
 
         diesel::delete(users.filter(id.eq(user.id))).execute(&mut conn)?;
-        Ok(())
-    }
-
-    fn update_user_password_from_reset(
-        &self,
-        password_reset: &PasswordReset,
-        new_password: &str,
-    ) -> Result<(), WebError> {
-        if password_reset.expires_at < Utc::now().naive_utc() {
-            return Err(WebError::from("password reset expired"));
-        }
-
-        let user = self.get_user_by_id(password_reset.user_id)?;
-
-        self.update_user_password(&user, new_password)?;
-
-        self.token_repository
-            .delete_password_reset_records_for_user(user.id)?;
-
         Ok(())
     }
 }
