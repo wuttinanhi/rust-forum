@@ -23,6 +23,8 @@ use rust_forum::repositories::post_repository::PostgresPostRepository;
 use rust_forum::repositories::token_repository::PostgresTokenRepository;
 use rust_forum::repositories::user_repository::PostgresUserRepository;
 use rust_forum::routes::error_handler::error_handler;
+use rust_forum::services::email_service::BasedEmailService;
+use rust_forum::services::token_service::BasedTokenService;
 use rust_forum::services::user_service::BasedUserService;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,
@@ -100,6 +102,10 @@ async fn main() -> std::io::Result<()> {
     let user_repo_arc = Arc::new(user_repo);
 
     // service
+    let token_service = BasedTokenService::new();
+
+    let email_service = BasedEmailService::new();
+
     let user_service = BasedUserService::new(user_repo_arc.clone(), Arc::new(token_repo));
 
     let app_kit = AppKit {
@@ -107,9 +113,11 @@ async fn main() -> std::io::Result<()> {
         comment_repository: Arc::new(comment_repo),
         user_repository: user_repo_arc.clone(),
         user_service: Arc::new(user_service),
+        email_service: Arc::new(email_service),
+        token_service: Arc::new(token_service),
     };
 
-    let app_kit_web_data = web::Data::new(app_kit.clone());
+    let app_kit_web_data = web::Data::new(app_kit);
 
     let migration_conn = db_pool_arc.clone();
     {

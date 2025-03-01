@@ -36,8 +36,7 @@ pub struct AppKit {
     pub user_repository: Arc<UserRepositoryWithError>,
 
     pub token_service: Arc<dyn TokenService>,
+    pub email_service: Arc<dyn EmailService>,
 
     pub user_service: Arc<dyn UserService>,
-
-    pub email_service: Arc<dyn EmailService>,
 }
