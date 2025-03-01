@@ -20,7 +20,7 @@ use rust_forum::db::run_migrations;
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
 use rust_forum::repositories::comment_repository::PostgresCommentRepository;
 use rust_forum::repositories::post_repository::PostgresPostRepository;
-use rust_forum::repositories::user_repository::{PostgresUserRepository, UserRepository};
+use rust_forum::repositories::user_repository::PostgresUserRepository;
 use rust_forum::routes::error_handler::error_handler;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,

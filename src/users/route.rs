@@ -5,7 +5,7 @@ use actix_session::Session;
 use actix_web::{
     error, get, post,
     web::{self},
-    HttpRequest, HttpResponse, Responder,
+    FromRequest, HttpRequest, HttpResponse, Responder,
 };
 
 use handlebars::Handlebars;
@@ -45,8 +45,6 @@ use super::repository::{
     get_user_sanitized_by_id, login_user, update_user_data, update_user_password,
     update_user_password_from_reset, validate_user_password,
 };
-
-use super::types::OptionalFetchMode;
 
 #[get("/login")]
 pub async fn users_login_route(
@@ -301,20 +299,6 @@ pub async fn users_profile_picture_upload_post_route(
     session: Session,
     MultipartForm(form): MultipartForm<UserUploadProfilePictureForm>,
 ) -> actix_web::Result<impl Responder> {
-    let session_user = get_session_user(&session)?;
-
-    // get user from db
-    let db_user = web::block({
-        let pool = pool.clone();
-        move || {
-            let mut conn = pool.get().map_err(|_| WebError::from("Database error"))?;
-            get_user_by_id(&mut conn, session_user.id)
-                .map_err(|_| WebError::from("User by session not found"))
-        }
-    })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
-
     // check content type
     let content_type = form
         .profile_picture
@@ -336,6 +320,8 @@ pub async fn users_profile_picture_upload_post_route(
     let unix_time = chrono::Utc::now().timestamp();
     let file_path = format!("static/{}.jpg", unix_time);
 
+    let session_user = get_session_user(&session)?;
+
     web::block(move || {
         // save file
         form.profile_picture
@@ -343,11 +329,15 @@ pub async fn users_profile_picture_upload_post_route(
             .persist(&file_path)
             .map_err(WebError::from)?;
 
-        let mut conn = pool.get().map_err(WebError::from)?;
+        let mut conn = pool.get().map_err(|_| WebError::from("Database error"))?;
 
         // add slash to make it accessible from client
         let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
 
+        let db_user = get_user_by_id(&mut conn, session_user.id)
+            .map_err(|_| WebError::from("User by session not found"))?;
+
+        // update user data with new profile image url
         update_user_data(
             &mut conn,
             &db_user,
@@ -370,6 +360,27 @@ pub async fn users_profile_picture_upload_post_route(
     set_flash_message(&session, FLASH_SUCCESS, "Profile picture uploaded")?;
 
     Ok(create_redirect("/users/settings"))
+}
+
+use futures::future::{ready, Ready};
+
+pub struct OptionalFetchMode(pub String);
+
+impl FromRequest for OptionalFetchMode {
+    type Error = actix_web::Error;
+    type Future = Ready<Result<Self, Self::Error>>;
+
+    fn from_request(req: &HttpRequest, _: &mut actix_web::dev::Payload) -> Self::Future {
+        let fetch_mode = req
+            .match_info()
+            .get("fetch_mode")
+            .map(|s| s.to_string())
+            .unwrap_or("posts".to_string());
+
+        // unwrap_or("posts".to_string());
+
+        ready(Ok(OptionalFetchMode(fetch_mode)))
+    }
 }
 
 // #[get("/profile/{user_id}/{fetch_mode:.*}")]
