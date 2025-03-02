@@ -132,7 +132,7 @@ async fn main() -> std::io::Result<()> {
         ActixProfileController::new(Arc::new(post_service), Arc::new(comment_service));
     let actix_profile_controller_arc = Arc::new(actix_profile_controller);
 
-    // start auto migrations
+    // Start run auto migrations
     let migration_conn = db_pool_arc.clone();
     {
         let mut conn = migration_conn
@@ -141,7 +141,7 @@ async fn main() -> std::io::Result<()> {
         let _ = run_migrations(&mut conn, MIGRATIONS);
     }
 
-    // CORS
+    // Setup CORS
     let cors_origins = std::env::var("APP_CORS_ORIGINS")
         .unwrap_or("http://localhost:3000,http://127.0.0.1:3000".to_string());
 
@@ -149,7 +149,7 @@ async fn main() -> std::io::Result<()> {
 
     let cors_origins_split: Vec<String> = cors_origins.split(',').map(|s| s.to_string()).collect();
 
-    // RATE LIMIT
+    // Setup Rate Limit
     let ratelimit_redis_host = std::env::var("REDIS_HOST").unwrap_or("127.0.0.1".to_string());
     let ratelimit_redis_password = std::env::var("REDIS_PASSWORD").unwrap_or("".to_string());
     let mut ratelimit_redis_url = format!("redis://{ratelimit_redis_host}");
@@ -160,7 +160,7 @@ async fn main() -> std::io::Result<()> {
 
     println!("ratelimit_redis_url: {:?}", &ratelimit_redis_url);
 
-    // create static directory if not exists
+    // Create static directory if not exists
     std::fs::create_dir_all("./static").expect("Failed to create static directory");
 
     HttpServer::new(move || {
@@ -291,13 +291,20 @@ async fn main() -> std::io::Result<()> {
                 move |req, path, query, payload, data, body| {
                     let profile_controller = profile_controller.clone();
 
-                    let ret = async move {
+                    // let ret = async move {
+                    //     profile_controller
+                    //         .users_view_profile_route(req, path, query, payload, data, body)
+                    //         .await
+                    // };
+                    // ret
+
+                    // --- or ---
+
+                    async move {
                         profile_controller
                             .users_view_profile_route(req, path, query, payload, data, body)
                             .await
-                    };
-
-                    ret
+                    }
                 },
             ),
         );
