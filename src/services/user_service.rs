@@ -197,7 +197,7 @@ impl UserService for BasedUserService {
             .map_err(|_| {
                 println!("failed to delete_password_reset_records_for_user");
                 UserServiceError::ErrorInternal
-            });
+            })?;
 
         Ok(())
     }

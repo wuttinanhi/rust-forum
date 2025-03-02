@@ -16,6 +16,7 @@ use handlebars::{DirectorySourceOptions, Handlebars};
 use rust_forum::comments::routes::{
     delete_comment_route, update_comment_post_route, update_comment_route,
 };
+use rust_forum::controllers::profile_controller::ActixProfileController;
 use rust_forum::db::run_migrations;
 use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
 use rust_forum::repositories::comment_repository::PostgresCommentRepository;
@@ -23,14 +24,15 @@ use rust_forum::repositories::post_repository::PostgresPostRepository;
 use rust_forum::repositories::token_repository::PostgresTokenRepository;
 use rust_forum::repositories::user_repository::PostgresUserRepository;
 use rust_forum::routes::error_handler::error_handler;
+use rust_forum::services::comment_service::BasedCommentService;
 use rust_forum::services::email_service::BasedEmailService;
+use rust_forum::services::post_service::BasedPostService;
 use rust_forum::services::token_service::BasedTokenService;
 use rust_forum::services::user_service::BasedUserService;
 use rust_forum::users::route::{
     users_changepassword_post_route, users_profile_picture_upload_post_route,
     users_resetpassword_post_route, users_resetpassword_route, users_resetpasswordtoken_post_route,
     users_resetpasswordtoken_route, users_settings_route, users_update_data_post_route,
-    users_view_profile_route,
 };
 use rust_forum::utils::pagination::handlebars_pagination_helper;
 use rust_forum::AppKit;
@@ -87,6 +89,8 @@ async fn main() -> std::io::Result<()> {
     // the web::Data in route will unable to extract if no type annotate specify
 
     let post_repo = PostgresPostRepository::new(db_pool_arc.clone());
+    let post_repo_arc = Arc::new(post_repo);
+
     // let post_repo_web_data: actix_web::web::Data<Arc<dyn PostRepository<Error = WebError>>> =
     //     actix_web::web::Data::new(Arc::new(post_repo));
     // optional after Arc::new
@@ -95,6 +99,7 @@ async fn main() -> std::io::Result<()> {
     let comment_repo = PostgresCommentRepository::new(db_pool_arc.clone());
     // let comment_repo_web_data: actix_web::web::Data<Arc<dyn CommentRepository<Error = WebError>>> =
     //     actix_web::web::Data::new(Arc::new(comment_repo));
+    let comment_repo_arc = Arc::new(comment_repo);
 
     let token_repo = PostgresTokenRepository::new(db_pool_arc.clone());
 
@@ -108,9 +113,13 @@ async fn main() -> std::io::Result<()> {
 
     let user_service = BasedUserService::new(user_repo_arc.clone(), Arc::new(token_repo));
 
+    let post_service = BasedPostService::new(post_repo_arc.clone());
+
+    let comment_service = BasedCommentService::new(comment_repo_arc.clone());
+
     let app_kit = AppKit {
-        post_repository: Arc::new(post_repo),
-        comment_repository: Arc::new(comment_repo),
+        post_repository: post_repo_arc.clone(),
+        comment_repository: comment_repo_arc.clone(),
         user_repository: user_repo_arc.clone(),
         user_service: Arc::new(user_service),
         email_service: Arc::new(email_service),
@@ -119,6 +128,11 @@ async fn main() -> std::io::Result<()> {
 
     let app_kit_web_data = web::Data::new(app_kit);
 
+    let actix_profile_controller =
+        ActixProfileController::new(Arc::new(post_service), Arc::new(comment_service));
+    let actix_profile_controller_arc = Arc::new(actix_profile_controller);
+
+    // start auto migrations
     let migration_conn = db_pool_arc.clone();
     {
         let mut conn = migration_conn
@@ -249,10 +263,6 @@ async fn main() -> std::io::Result<()> {
             .service(users_changepassword_post_route)
             .service(users_update_data_post_route)
             .service(users_profile_picture_upload_post_route)
-            .service(
-                web::resource(["/profile/{user_id}", "/profile/{user_id}/{fetch_mode}"])
-                    .to(users_view_profile_route),
-            )
             .service(users_settings_route)
             .service(users_resetpassword_route)
             .service(users_resetpassword_post_route)
@@ -273,6 +283,24 @@ async fn main() -> std::io::Result<()> {
             .service(update_comment_route)
             .service(update_comment_post_route)
             .service(delete_comment_route);
+
+        let profile_controller = actix_profile_controller_arc.clone();
+
+        let profile_scope = web::scope("/profile").service(
+            web::resource(["/{user_id}", "/{user_id}/{fetch_mode}"]).to(
+                move |req, path, query, payload, data, body| {
+                    let profile_controller = profile_controller.clone();
+
+                    let ret = async move {
+                        profile_controller
+                            .users_view_profile_route(req, path, query, payload, data, body)
+                            .await
+                    };
+
+                    ret
+                },
+            ),
+        );
 
         // --- init app ---
         App::new()
@@ -296,6 +324,7 @@ async fn main() -> std::io::Result<()> {
             .service(users_scope)
             .service(posts_scope)
             .service(comments_scope)
+            .service(profile_scope)
             .route("/", web::to(index_list_posts_route))
     })
     .bind((host, port))?

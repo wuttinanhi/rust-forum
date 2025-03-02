@@ -1,32 +1,22 @@
-use std::sync::{Arc, Mutex};
 
 use actix_multipart::form::MultipartForm;
 use actix_session::Session;
 use actix_web::{
     error, get, post,
-    web::{self},
-    FromRequest, HttpRequest, HttpResponse, Responder,
+    web::{self}, HttpRequest, HttpResponse, Responder,
 };
 
 use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::types::CommentPublic,
     db::{DbPool, WebError},
     models::UpdateUserNameAndProfilePicture,
-    posts::types::PostPublic,
-    users::{
-        constants::SESSION_KEY_USER,
-        types::user_to_user_public,
-    },
+    users::{constants::SESSION_KEY_USER, types::user_to_user_public},
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
         http::{create_redirect, redirect_back},
-        pagination::{
-            HandlebarsPaginationResult, QueryPagination,
-        },
         users::get_session_user,
     },
     validate_password_and_confirm_password, AppKit,
@@ -38,9 +28,7 @@ use super::dto::{
     UserUpdateFormData, UserUploadProfilePictureForm,
 };
 
-use super::repository::{
-    get_user_by_id, validate_user_password,
-};
+use super::repository::{get_user_by_id, validate_user_password};
 
 #[get("/login")]
 pub async fn users_login_route(
@@ -360,137 +348,6 @@ pub async fn users_profile_picture_upload_post_route(
     set_flash_message(&session, FLASH_SUCCESS, "Profile picture uploaded")?;
 
     Ok(create_redirect("/users/settings"))
-}
-
-use futures::future::{ready, Ready};
-
-pub struct OptionalFetchMode(pub String);
-
-impl FromRequest for OptionalFetchMode {
-    type Error = actix_web::Error;
-    type Future = Ready<Result<Self, Self::Error>>;
-
-    fn from_request(req: &HttpRequest, _: &mut actix_web::dev::Payload) -> Self::Future {
-        let fetch_mode = req
-            .match_info()
-            .get("fetch_mode")
-            .map(|s| s.to_string())
-            .unwrap_or("posts".to_string());
-
-        // unwrap_or("posts".to_string());
-
-        ready(Ok(OptionalFetchMode(fetch_mode)))
-    }
-}
-
-// #[get("/profile/{user_id}/{fetch_mode:.*}")]
-pub async fn users_view_profile_route(
-    app_kit: web::Data<AppKit>,
-    session: Session,
-    path: web::Path<(i32,)>,
-    fetch_mode: OptionalFetchMode,
-    pagination: QueryPagination,
-    hb: web::Data<Handlebars<'_>>,
-) -> actix_web::Result<impl Responder> {
-    let user_id = path.into_inner().0;
-    let fetch_mode = fetch_mode.0;
-    let fetch_mode_clone = fetch_mode.clone();
-
-    let hb_data = json!({
-        "parent": "base",
-    });
-
-    let user_created_posts: Arc<Mutex<Vec<PostPublic>>> = Arc::new(Mutex::new(vec![]));
-    let user_created_comments: Arc<Mutex<Vec<CommentPublic>>> = Arc::new(Mutex::new(vec![]));
-    let pagination_result: Arc<Mutex<HandlebarsPaginationResult>> =
-        Arc::new(Mutex::new(HandlebarsPaginationResult::default()));
-
-    let user_created_posts_clone = Arc::clone(&user_created_posts);
-    let user_created_comments_clone = user_created_comments.clone();
-    let pagination_result_clone = pagination_result.clone();
-
-    Ok(HttpResponse::InternalServerError())
-
-    // let user_data = web::block(move || {
-    //     let user_sanitized = app_kit.user_service.get_user_by_id_public(user_id)?;
-    //     // get_user_sanitized_by_id(&mut conn, user_id)?;
-
-    //     if fetch_mode_clone == "posts" {
-    //         let created_posts = get_posts_by_user(&mut conn, user_id, &pagination)?;
-
-    //         user_created_posts_clone
-    //             .lock()
-    //             .unwrap()
-    //             .extend(created_posts.posts);
-
-    //         let pagination_result =
-    //             build_handlebars_pagination_result(created_posts.total, &pagination);
-
-    //         *pagination_result_clone.lock().unwrap() = pagination_result;
-    //     } else if fetch_mode_clone == "comments" {
-    //         let created_comments = get_comments_by_user(&mut conn, &user_id, &pagination)?;
-
-    //         user_created_comments_clone
-    //             .lock()
-    //             .unwrap()
-    //             .extend(created_comments.comments);
-
-    //         let pagination_result =
-    //             build_handlebars_pagination_result(created_comments.total, &pagination);
-
-    //         *pagination_result_clone.lock().unwrap() = pagination_result;
-    //     } else {
-    //         return Err(WebError::from("no fetch mode was provide"));
-    //     }
-
-    //     Ok(user_sanitized)
-    // })
-    // .await?
-    // .map_err(actix_web::error::ErrorInternalServerError)?;
-
-    // update_handlebars_data(&mut hb_data, "profile_users", json!(user_data));
-    // update_handlebars_data(
-    //     &mut hb_data,
-    //     "title",
-    //     json!(format!("Profile {}", user_data.name)),
-    // );
-
-    // let profile_users_created_posts = &*user_created_posts.lock().unwrap();
-    // update_handlebars_data(
-    //     &mut hb_data,
-    //     "profile_users_created_posts",
-    //     json!(profile_users_created_posts),
-    // );
-
-    // let profile_users_created_comments = &*user_created_comments.lock().unwrap();
-    // update_handlebars_data(
-    //     &mut hb_data,
-    //     "profile_users_created_comments",
-    //     json!(profile_users_created_comments),
-    // );
-
-    // if fetch_mode == "posts" {
-    //     update_handlebars_data(&mut hb_data, "fetch_mode_posts", json!(true));
-    // } else if fetch_mode == "comments" {
-    //     update_handlebars_data(&mut hb_data, "fetch_mode_comments", json!(true));
-    // }
-
-    // let pagination_result_deref = &*(pagination_result.lock().unwrap());
-
-    // update_handlebars_data(
-    //     &mut hb_data,
-    //     "pagination_result",
-    //     json!(pagination_result_deref),
-    // );
-
-    // handle_flash_message(&mut hb_data, &session);
-    // handlebars_add_user(&session, &mut hb_data)?;
-
-    // let body = hb
-    //     .render("users/profile", &hb_data)
-    //     .map_err(actix_web::error::ErrorInternalServerError)?;
-
-    // Ok(HttpResponse::Ok().body(body))
 }
 
 #[get("/resetpassword")]

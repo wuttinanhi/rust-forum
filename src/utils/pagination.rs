@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-    db::{WebError, DbPool},
+    db::{DbPool, WebError},
     models::Post,
     posts::repository::get_posts,
 };
@@ -73,6 +73,10 @@ impl FromRequest for QueryPagination {
 impl QueryPagination {
     pub fn get_offset(&self) -> i64 {
         (self.page - 1) * self.limit
+    }
+
+    pub fn get_limit(&self) -> i64 {
+        self.limit
     }
 }
 
