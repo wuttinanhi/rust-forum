@@ -123,24 +123,22 @@ pub async fn profile_view_route(
     );
 
     if fetch_mode == "posts" || fetch_mode == "" {
-        let profile_users_created_posts = user_created_posts.lock().unwrap();
+        let profile_users_created_posts = &*user_created_posts.lock().unwrap();
 
         update_handlebars_data(
             &mut hb_data,
             "profile_users_created_posts",
-            json!(&*profile_users_created_posts),
+            json!(profile_users_created_posts),
         );
 
         update_handlebars_data(&mut hb_data, "fetch_mode_posts", json!(true));
     } else if fetch_mode == "comments" {
-        let profile_users_created_comments = user_created_comments.lock().unwrap();
+        let profile_users_created_comments = &*user_created_comments.lock().unwrap();
         update_handlebars_data(
             &mut hb_data,
             "profile_users_created_comments",
-            json!(&*profile_users_created_comments),
+            json!(profile_users_created_comments),
         );
-
-        dbg!(&*profile_users_created_comments);
 
         update_handlebars_data(&mut hb_data, "fetch_mode_comments", json!(true));
     }

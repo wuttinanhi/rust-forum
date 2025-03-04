@@ -58,8 +58,12 @@
       <div class="card my-3 p-0" id="{{this.comment.id}}">
         <div class="card-body px-3 py-2 m-0">
           <a href="/posts/{{this.comment.post_id}}#{{this.comment.id}}">
-            {{this.comment.content}}
+            {{this.parent_post.title}}
           </a>
+
+          <p class="mt-3 p-2" style="background-color: oklch(0.967 0.003 264.542)">
+            {{this.comment.content}}
+          </p>
 
           <div class="d-flex flex-row gap-2 my-2 py-0">
             <div>
