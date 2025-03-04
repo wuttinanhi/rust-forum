@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    entities::comment::ListCommentResult,
-    models::Comment,
-    repositories::comment_repository::{CommentRepository, CommentRepositoryWithError},
+    entities::comment::ListCommentResult, models::Comment,
+    repositories::comment_repository::CommentRepositoryWithError,
     utils::pagination::QueryPagination,
 };
 
@@ -78,15 +77,21 @@ impl CommentService for BasedCommentService {
         parent_post_id: i32,
         comment_body: &str,
     ) -> Result<Comment, CommentServiceError> {
-        todo!()
+        self.comment_repository
+            .create_comment(comment_user_id, parent_post_id, comment_body)
+            .map_err(|_| CommentServiceError::ErrorCreateComment)
     }
 
     fn get_comment(&self, comment_id: i32) -> Result<Comment, CommentServiceError> {
-        todo!()
+        self.comment_repository
+            .get_comment(comment_id)
+            .map_err(|_| CommentServiceError::ErrorGetComment)
     }
 
     fn get_comments(&self, parent_post_id: i32) -> Result<Vec<Comment>, CommentServiceError> {
-        todo!()
+        self.comment_repository
+            .get_comments(parent_post_id)
+            .map_err(|_| CommentServiceError::ErrorGetComment)
     }
 
     fn update_comment(
@@ -94,11 +99,15 @@ impl CommentService for BasedCommentService {
         target_comment_id: i32,
         new_body: &str,
     ) -> Result<Comment, CommentServiceError> {
-        todo!()
+        self.comment_repository
+            .update_comment(target_comment_id, new_body)
+            .map_err(|_| CommentServiceError::ErrorUpdateComment)
     }
 
     fn delete_comment(&self, target_comment_id: i32) -> Result<usize, CommentServiceError> {
-        todo!()
+        self.comment_repository
+            .delete_comment(target_comment_id)
+            .map_err(|_| CommentServiceError::ErrorDeleteComment)
     }
 
     fn get_comments_with_user(
@@ -106,7 +115,9 @@ impl CommentService for BasedCommentService {
         parent_post_id: i32,
         pagination: &QueryPagination,
     ) -> Result<ListCommentResult, CommentServiceError> {
-        todo!()
+        self.comment_repository
+            .get_comments_with_user(parent_post_id, pagination)
+            .map_err(|_| CommentServiceError::ErrorGetComment)
     }
 
     fn get_comments_by_user(
@@ -124,6 +135,8 @@ impl CommentService for BasedCommentService {
         target_comment: &Comment,
         page_limit: i64,
     ) -> Result<i64, CommentServiceError> {
-        todo!()
+        self.comment_repository
+            .get_page_where_comment_at(target_comment, page_limit)
+            .map_err(|_| CommentServiceError::ErrorGetComment)
     }
 }
