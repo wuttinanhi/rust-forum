@@ -293,8 +293,10 @@ async fn main() -> std::io::Result<()> {
             .service(update_comment_post_route)
             .service(delete_comment_route);
 
-        let profile_scope =
-            web::scope("/profile").route("/{id}", web::get().to(profile_view_route));
+        let profile_scope = web::scope("/profile").route(
+            "/{user_id}/{fetch_mode:.*}",
+            web::get().to(profile_view_route),
+        );
 
         // --- init app ---
         App::new()
