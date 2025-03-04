@@ -9,8 +9,8 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::repository::get_page_where_comment_at,
-    db::{DbPool, WebError},
+    db::WebError,
+    entities::comment::{CreateCommentFormData, UpdateCommentFormData},
     models::Comment,
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
@@ -19,14 +19,12 @@ use crate::{
         session::handlebars_add_user,
         users::get_session_user,
     },
+    AppKit,
 };
-
-use super::dto::{CreateCommentFormData, UpdateCommentFormData};
-use super::repository::{create_comment, delete_comment, get_comment, update_comment};
 
 #[post("/create")]
 pub async fn create_comment_submit_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     form: actix_web_validator::Form<CreateCommentFormData>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
@@ -35,10 +33,15 @@ pub async fn create_comment_submit_route(
     let post_id = form.post_id;
 
     let result: Result<(Comment, i64), WebError> = web::block(move || {
-        let mut conn = pool.get()?;
-        let comment = create_comment(&mut conn, &user.id, &form.post_id, &form.body)?;
+        let comment = app_kit
+            .comment_service
+            .create_comment(user.id, form.post_id, &form.body)
+            .map_err(|e| WebError::from(e.to_string()))?;
 
-        let target_comment_page = get_page_where_comment_at(&mut conn, &comment, 10)?;
+        let target_comment_page = app_kit
+            .comment_service
+            .get_page_where_comment_at(&comment, 10)
+            .map_err(|e| WebError::from(e.to_string()))?;
 
         Ok((comment, target_comment_page))
     })
@@ -66,7 +69,7 @@ pub async fn create_comment_submit_route(
 #[get("/update/{comment_id}")]
 pub async fn update_comment_route(
     req: HttpRequest,
-    pool: actix_web::web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     hb: web::Data<Handlebars<'_>>,
     session: Session,
     path: web::Path<i32>,
@@ -75,11 +78,7 @@ pub async fn update_comment_route(
 
     let comment_id = path.into_inner();
 
-    let comment = web::block(move || {
-        let mut conn = pool.get()?;
-        get_comment(&mut conn, comment_id)
-    })
-    .await?;
+    let comment = web::block(move || app_kit.comment_service.get_comment(comment_id)).await?;
 
     let comment = match comment {
         Ok(comment) => comment,
@@ -114,9 +113,9 @@ pub async fn update_comment_route(
 
 #[post("/update/{post_id}")]
 pub async fn update_comment_post_route(
+    app_kit: web::Data<AppKit>,
     req: HttpRequest,
     form: actix_web_validator::Form<UpdateCommentFormData>,
-    pool: web::Data<DbPool>,
     path: web::Path<i32>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
@@ -124,18 +123,24 @@ pub async fn update_comment_post_route(
     let session_user = get_session_user(&session)?;
 
     let result: Result<(Comment, i64), WebError> = web::block(move || {
-        let mut conn = pool.get()?;
-
-        let comment = get_comment(&mut conn, comment_id)
+        let comment = app_kit
+            .comment_service
+            .get_comment(comment_id)
             .map_err(|e| WebError::from(format!("failed to get comment {}", e)))?;
 
         if comment.user_id != session_user.id {
             return Err(WebError::from("Error : User does not own comment"));
         }
 
-        let comment = update_comment(&mut conn, comment.id, &form.body)?;
+        let comment = app_kit
+            .comment_service
+            .update_comment(comment.id, &form.body)
+            .map_err(|e| WebError::from(format!("failed to update comment {}", e)))?;
 
-        let target_comment_page = get_page_where_comment_at(&mut conn, &comment, 10)?;
+        let target_comment_page = app_kit
+            .comment_service
+            .get_page_where_comment_at(&comment, 10)
+            .map_err(|e| WebError::from(format!("failed to get_page_where_comment_at {}", e)))?;
 
         Ok((comment, target_comment_page))
     })
@@ -162,8 +167,8 @@ pub async fn update_comment_post_route(
 
 #[post("/delete/{comment_id}")]
 pub async fn delete_comment_route(
+    app_kit: web::Data<AppKit>,
     req: HttpRequest,
-    pool: web::Data<DbPool>,
     path: web::Path<i32>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
@@ -171,18 +176,24 @@ pub async fn delete_comment_route(
     let session_user = get_session_user(&session)?;
 
     let delete_comment_result: Result<(Comment, i64), WebError> = web::block(move || {
-        let mut conn = pool.get()?;
-
-        let comment = get_comment(&mut conn, comment_id)
-            .map_err(|e| WebError::from(format!("failed to get comment {}", e)))?;
+        let comment = app_kit
+            .comment_service
+            .get_comment(comment_id)
+            .map_err(|e| WebError::from(e.to_string()))?;
 
         if comment.user_id != session_user.id {
             return Err(WebError::from("Error : User does not own comment"));
         }
 
-        delete_comment(&mut conn, comment.id)?;
+        app_kit
+            .comment_service
+            .delete_comment(comment.id)
+            .map_err(|e| WebError::from(e.to_string()))?;
 
-        let target_comment_page = get_page_where_comment_at(&mut conn, &comment, 10)?;
+        let target_comment_page = app_kit
+            .comment_service
+            .get_page_where_comment_at(&comment, 10)
+            .map_err(|e| WebError::from(e.to_string()))?;
 
         Ok((comment, target_comment_page))
     })

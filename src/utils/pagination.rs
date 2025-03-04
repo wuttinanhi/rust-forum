@@ -1,14 +1,9 @@
 use std::fmt::{Display, Formatter};
 
-use actix_web::{get, web, Error, FromRequest, HttpRequest, HttpResponse, Responder};
+use actix_web::{Error, FromRequest, HttpRequest};
 use futures::future::{ready, Ready};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
-use crate::{
-    db::{DbPool, WebError},
-    models::Post,
-};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct QueryPagination {

@@ -24,6 +24,12 @@ impl Display for EmailServiceError {
 
 pub struct BasedEmailService {}
 
+impl Default for BasedEmailService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BasedEmailService {
     pub fn new() -> Self {
         Self {}

@@ -13,13 +13,18 @@ use actix_web::{
 };
 use actix_web::{http, HttpRequest, HttpResponse};
 use handlebars::{DirectorySourceOptions, Handlebars};
-use rust_forum::comments::routes::{
-    delete_comment_route, update_comment_post_route, update_comment_route,
-};
 
+use rust_forum::controllers::comment_controller::{
+    create_comment_submit_route, delete_comment_route, update_comment_post_route,
+    update_comment_route,
+};
+use rust_forum::controllers::post_controller::{
+    create_post_route, create_post_submit_route, delete_post_route, index_list_posts_route,
+    update_post_route, update_post_submit_route, view_post_route,
+};
 use rust_forum::controllers::profile_controller::profile_view_route;
 use rust_forum::db::run_migrations;
-use rust_forum::posts::route::{delete_post_route, update_post_route, update_post_submit_route};
+
 use rust_forum::repositories::comment_repository::PostgresCommentRepository;
 use rust_forum::repositories::post_repository::PostgresPostRepository;
 use rust_forum::repositories::token_repository::PostgresTokenRepository;
@@ -38,11 +43,7 @@ use rust_forum::users::route::{
 use rust_forum::utils::pagination::handlebars_pagination_helper;
 use rust_forum::AppKit;
 use rust_forum::{
-    comments::routes::create_comment_submit_route,
     db::initialize_db_pool,
-    posts::route::{
-        create_post_route, create_post_submit_route, index_list_posts_route, view_post_route,
-    },
     users::route::{
         users_login_post_route, users_login_route, users_logout, users_register_post_route,
         users_register_route,
@@ -121,9 +122,9 @@ async fn main() -> std::io::Result<()> {
 
     // --- app kit setup ---
     let app_kit = AppKit {
-        post_repository: post_repo_arc.clone(),
-        comment_repository: comment_repo_arc.clone(),
-        user_repository: user_repo_arc.clone(),
+        // post_repository: post_repo_arc.clone(),
+        // comment_repository: comment_repo_arc.clone(),
+        // user_repository: user_repo_arc.clone(),
         user_service: Arc::new(user_service),
         email_service: Arc::new(email_service),
         token_service: Arc::new(token_service),

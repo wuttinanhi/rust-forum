@@ -56,7 +56,7 @@ pub async fn create_post_submit_route(
 
     let create_post_result = web::block(move || {
         app_kit
-            .post_repository
+            .post_service
             .create_post(user.id, &form.title, &form.body)
     })
     .await?;
@@ -96,12 +96,12 @@ pub async fn view_post_route(
         let post = app_kit
             .post_service
             .get_post_with_user(post_id)
-            .map_err(|e| WebError::from(format!("Failed to get post: {}", e.to_string())))?;
+            .map_err(|e| WebError::from(format!("Failed to get post: {}", e)))?;
 
         let comments = app_kit
             .comment_service
             .get_comments_with_user(post.post.id, &pagination_clone)
-            .map_err(|e| WebError::from(format!("Failed to get comments: {}", e.to_string())))?;
+            .map_err(|e| WebError::from(format!("Failed to get comments: {}", e)))?;
 
         Ok((post, comments))
     })

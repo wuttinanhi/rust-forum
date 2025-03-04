@@ -14,10 +14,7 @@ pub mod users;
 pub mod utils;
 
 use diesel::{Connection, PgConnection};
-use repositories::{
-    comment_repository::CommentRepositoryWithError, post_repository::PostRepositoryWithError,
-    user_repository::UserRepositoryWithError,
-};
+
 use services::{
     comment_service::CommentService, email_service::EmailService, post_service::PostService,
     token_service::TokenService, user_service::UserService,
@@ -32,10 +29,9 @@ pub fn establish_connection() -> PgConnection {
 
 #[derive(Clone)]
 pub struct AppKit {
-    pub post_repository: Arc<PostRepositoryWithError>,
-    pub comment_repository: Arc<CommentRepositoryWithError>,
-    pub user_repository: Arc<UserRepositoryWithError>,
-
+    // pub post_repository: Arc<PostRepositoryWithError>,
+    // pub comment_repository: Arc<CommentRepositoryWithError>,
+    // pub user_repository: Arc<UserRepositoryWithError>,
     pub token_service: Arc<dyn TokenService>,
     pub email_service: Arc<dyn EmailService>,
 
