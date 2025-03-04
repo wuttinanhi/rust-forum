@@ -390,7 +390,8 @@ pub async fn users_resetpassword_post_route(
 
         let password_reset = app_kit
             .token_service
-            .create_password_reset(target_reset_password_user.id)?;
+            .create_password_reset(target_reset_password_user.id)
+            .map_err(|_| WebError::from("failed to create password reset record"))?;
 
         #[allow(non_snake_case)]
         let APP_DOMAIN_URL = std::env::var("APP_DOMAIN_URL").expect("APP_DOMAIN_URL must be set");
@@ -455,10 +456,13 @@ pub async fn users_resetpasswordtoken_post_route(
     validate_password_and_confirm_password!(form);
 
     let result: Result<(), WebError> = web::block(move || {
+        // get password reset record
         let password_reset = app_kit
             .token_service
-            .get_password_reset_by_token(&form.token)?;
+            .get_password_reset_by_token(&form.token)
+            .map_err(|_| WebError::from("failed to get password reset record"))?;
 
+        // consume password reset record and update user password
         app_kit
             .user_service
             .update_user_password_from_reset(&password_reset, &form.new_password)

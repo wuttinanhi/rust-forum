@@ -113,7 +113,7 @@ impl UserService for BasedUserService {
         let create_user_result = self
             .user_repository
             .create_user(user_name, user_email, user_password)
-            .map_err(|e| UserServiceError::ErrorRegister)?;
+            .map_err(|_| UserServiceError::ErrorRegister)?;
 
         Ok(create_user_result)
     }
@@ -147,7 +147,7 @@ impl UserService for BasedUserService {
         // update user data
         self.user_repository
             .update_user_data(&user, new_data)
-            .map_err(|e| UserServiceError::ErrorUpdateUserData)?;
+            .map_err(|_| UserServiceError::ErrorUpdateUserData)?;
 
         // get user data
         let updated_user = self.get_user_by_id(user_id)?;
@@ -193,7 +193,7 @@ impl UserService for BasedUserService {
         self.update_user_password(user.id, new_password)?;
 
         self.token_repository
-            .delete_password_reset_records_for_user(user.id)
+            .delete_password_resets_for_user(user.id)
             .map_err(|_| {
                 println!("failed to delete_password_reset_records_for_user");
                 UserServiceError::ErrorInternal

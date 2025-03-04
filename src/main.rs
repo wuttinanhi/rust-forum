@@ -84,6 +84,7 @@ async fn main() -> std::io::Result<()> {
 
     let db_pool_arc = Arc::new(db_pool.clone());
 
+    // --- repository setup ---
     // this is not equal
     // let comment_repo_web_data: Data<Arc<dyn CommentRepository<Error = Box<dyn Error + Send + Sync>>>>
     // --- and ---
@@ -106,17 +107,19 @@ async fn main() -> std::io::Result<()> {
     let comment_repo_arc = Arc::new(comment_repo);
 
     let token_repo = PostgresTokenRepository::new(db_pool_arc.clone());
+    let token_repo_arc = Arc::new(token_repo);
 
     let user_repo = PostgresUserRepository::new(db_pool_arc.clone());
     let user_repo_arc = Arc::new(user_repo);
 
-    // service
-    let token_service = BasedTokenService::new();
+    // --- service setup ---
+    let token_service = BasedTokenService::new(token_repo_arc.clone());
     let email_service = BasedEmailService::new();
-    let user_service = BasedUserService::new(user_repo_arc.clone(), Arc::new(token_repo));
+    let user_service = BasedUserService::new(user_repo_arc.clone(), token_repo_arc.clone());
     let post_service = BasedPostService::new(post_repo_arc.clone());
     let comment_service = BasedCommentService::new(comment_repo_arc.clone());
 
+    // --- app kit setup ---
     let app_kit = AppKit {
         post_repository: post_repo_arc.clone(),
         comment_repository: comment_repo_arc.clone(),

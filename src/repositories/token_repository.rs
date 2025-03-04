@@ -14,29 +14,29 @@ use crate::{
 
 /// Repository trait for managing password reset tokens
 pub trait TokenRepository: Send + Sync + 'static {
-    /// Deletes all password reset records for a specific user
+    /// Creates a new password reset token for a user
     ///
     /// # Arguments
-    /// * `user_id` - The ID of the user whose reset records should be deleted
-    fn delete_password_reset_records_for_user(&self, user_id: i32) -> Result<(), WebError>;
+    /// * `target_user_id` - The ID of the user requesting password reset
+    fn create_password_reset(&self, target_user_id: i32) -> Result<PasswordReset, WebError>;
 
     /// Retrieves a password reset record by its token
     ///
     /// # Arguments
     /// * `target_token` - The token string to search for
-    fn get_password_reset_record(&self, target_token: &str) -> Result<PasswordReset, WebError>;
+    fn get_password_reset(&self, target_token: &str) -> Result<PasswordReset, WebError>;
 
     /// Deletes a specific password reset record
     ///
     /// # Arguments
     /// * `password_reset_id` - The ID of the password reset record to delete
-    fn delete_password_reset_record(&self, password_reset_id: i32) -> Result<(), WebError>;
+    fn delete_password_reset(&self, password_reset_id: i32) -> Result<usize, WebError>;
 
-    /// Creates a new password reset token for a user
+    /// Deletes all password reset records for a specific user
     ///
     /// # Arguments
-    /// * `target_user_id` - The ID of the user requesting password reset
-    fn create_password_reset_token(&self, target_user_id: i32) -> Result<PasswordReset, WebError>;
+    /// * `user_id` - The ID of the user whose reset records should be deleted
+    fn delete_password_resets_for_user(&self, user_id: i32) -> Result<usize, WebError>;
 }
 
 pub struct PostgresTokenRepository {
@@ -50,7 +50,7 @@ impl PostgresTokenRepository {
 }
 
 impl TokenRepository for PostgresTokenRepository {
-    fn create_password_reset_token(&self, target_user_id: i32) -> Result<PasswordReset, WebError> {
+    fn create_password_reset(&self, target_user_id: i32) -> Result<PasswordReset, WebError> {
         let mut conn = self.pool.get()?;
 
         use crate::schema::password_resets::dsl::*;
@@ -75,7 +75,7 @@ impl TokenRepository for PostgresTokenRepository {
         Ok(password_reset)
     }
 
-    fn get_password_reset_record(&self, target_token: &str) -> Result<PasswordReset, WebError> {
+    fn get_password_reset(&self, target_token: &str) -> Result<PasswordReset, WebError> {
         let mut conn = self.pool.get()?;
 
         use crate::schema::password_resets::dsl::*;
@@ -87,22 +87,23 @@ impl TokenRepository for PostgresTokenRepository {
         Ok(password_reset)
     }
 
-    fn delete_password_reset_record(&self, password_reset_id: i32) -> Result<(), WebError> {
+    fn delete_password_reset(&self, password_reset_id: i32) -> Result<usize, WebError> {
         let mut conn = self.pool.get()?;
 
         use crate::schema::password_resets::dsl::*;
 
-        diesel::delete(password_resets.filter(id.eq(password_reset_id))).execute(&mut conn)?;
-        Ok(())
+        let row_affected =
+            diesel::delete(password_resets.filter(id.eq(password_reset_id))).execute(&mut conn)?;
+        Ok(row_affected)
     }
 
-    fn delete_password_reset_records_for_user(&self, target_user_id: i32) -> Result<(), WebError> {
+    fn delete_password_resets_for_user(&self, target_user_id: i32) -> Result<usize, WebError> {
         let mut conn = self.pool.get()?;
 
         use crate::schema::password_resets::dsl::*;
 
-        diesel::delete(password_resets.filter(user_id.eq(target_user_id))).execute(&mut conn)?;
-
-        Ok(())
+        let row_affected = diesel::delete(password_resets.filter(user_id.eq(target_user_id)))
+            .execute(&mut conn)?;
+        Ok(row_affected)
     }
 }
