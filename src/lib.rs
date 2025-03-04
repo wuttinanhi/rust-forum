@@ -19,7 +19,8 @@ use repositories::{
     user_repository::UserRepositoryWithError,
 };
 use services::{
-    email_service::EmailService, token_service::TokenService, user_service::UserService,
+    comment_service::CommentService, email_service::EmailService, post_service::PostService,
+    token_service::TokenService, user_service::UserService,
 };
 use std::{env, sync::Arc};
 
@@ -39,4 +40,6 @@ pub struct AppKit {
     pub email_service: Arc<dyn EmailService>,
 
     pub user_service: Arc<dyn UserService>,
+    pub post_service: Arc<dyn PostService>,
+    pub comment_service: Arc<dyn CommentService>,
 }

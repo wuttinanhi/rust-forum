@@ -1,9 +1,9 @@
-
 use actix_multipart::form::MultipartForm;
 use actix_session::Session;
 use actix_web::{
     error, get, post,
-    web::{self}, HttpRequest, HttpResponse, Responder,
+    web::{self},
+    HttpRequest, HttpResponse, Responder,
 };
 
 use handlebars::Handlebars;
@@ -405,11 +405,14 @@ pub async fn users_resetpassword_post_route(
             password_reset_url, password_reset_url
         );
 
-        app_kit.email_service.send_email(
-            &target_reset_password_user.email,
-            "Password reset instruction - Rust Forum",
-            &email_body,
-        )?;
+        app_kit
+            .email_service
+            .send_email(
+                &target_reset_password_user.email,
+                "Password reset instruction - Rust Forum",
+                &email_body,
+            )
+            .map_err(|_| WebError::from("failed to send reset password email"))?;
 
         Ok::<_, WebError>(())
     })

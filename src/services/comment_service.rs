@@ -115,7 +115,7 @@ impl CommentService for BasedCommentService {
         pagination: &QueryPagination,
     ) -> Result<ListCommentResult, CommentServiceError> {
         self.comment_repository
-            .get_comments_by_user(target_user_id, &pagination)
+            .get_comments_by_user(target_user_id, pagination)
             .map_err(|_| CommentServiceError::ErrorGetComment)
     }
 

@@ -111,7 +111,7 @@ impl PostService for BasedPostService {
         pagination: &QueryPagination,
     ) -> Result<ListPostResult, PostServiceError> {
         self.post_repository
-            .get_posts_by_user(target_user_id, &pagination)
+            .get_posts_by_user(target_user_id, pagination)
             .map_err(|_| PostServiceError::ErrorGetPost)
     }
 
