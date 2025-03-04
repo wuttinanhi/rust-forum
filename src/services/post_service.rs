@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use crate::{
@@ -12,6 +13,17 @@ pub enum PostServiceError {
     ErrorGetPost,
     ErrorUpdatePost,
     ErrorDeletePost,
+}
+
+impl Display for PostServiceError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PostServiceError::ErrorCreatePost => write!(f, "Failed to create post"),
+            PostServiceError::ErrorGetPost => write!(f, "Failed to get post"),
+            PostServiceError::ErrorUpdatePost => write!(f, "Failed to update post"),
+            PostServiceError::ErrorDeletePost => write!(f, "Failed to delete post"),
+        }
+    }
 }
 
 pub trait PostService: Send + Sync {

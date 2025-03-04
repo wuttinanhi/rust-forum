@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::sync::Arc;
 
 use crate::{
@@ -11,6 +12,17 @@ pub enum CommentServiceError {
     ErrorGetComment,
     ErrorUpdateComment,
     ErrorDeleteComment,
+}
+
+impl Display for CommentServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CommentServiceError::ErrorCreateComment => write!(f, "Failed to create comment"),
+            CommentServiceError::ErrorGetComment => write!(f, "Failed to get comment"),
+            CommentServiceError::ErrorUpdateComment => write!(f, "Failed to update comment"),
+            CommentServiceError::ErrorDeleteComment => write!(f, "Failed to delete comment"),
+        }
+    }
 }
 
 pub trait CommentService: Send + Sync {

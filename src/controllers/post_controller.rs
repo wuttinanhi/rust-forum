@@ -9,12 +9,10 @@ use handlebars::Handlebars;
 use serde_json::json;
 
 use crate::{
-    comments::{repository::get_comments_with_user, types::ListCommentResult},
-    db::{DbPool, WebError},
-    posts::{
-        dto::PostFormData,
-        repository::{delete_post, update_post},
-        types::PostPublic,
+    db::WebError,
+    entities::{
+        comment::ListCommentResult,
+        post::{PostFormData, PostPublic},
     },
     utils::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
@@ -26,10 +24,6 @@ use crate::{
     },
     AppKit,
 };
-
-use crate::posts::repository::get_post_with_user;
-
-use super::repository::{get_post, get_posts_with_user};
 
 #[get("/create")]
 pub async fn create_post_route(
@@ -54,7 +48,6 @@ pub async fn create_post_route(
 
 #[post("/create")]
 pub async fn create_post_submit_route(
-    // post_repo: web::Data<std::sync::Arc<dyn PostRepository<Error = WebError>>>,
     app_kit: web::Data<AppKit>,
     form: actix_web_validator::Form<PostFormData>,
     session: Session,
@@ -87,7 +80,7 @@ pub async fn create_post_submit_route(
 
 #[get("/{post_id}")]
 pub async fn view_post_route(
-    pool: web::Data<DbPool>,
+    app_kit: web::Data<AppKit>,
     hb: web::Data<Handlebars<'_>>,
     path: web::Path<i32>,
     session: Session,
@@ -100,15 +93,17 @@ pub async fn view_post_route(
     let pagination_clone = pagination.clone();
 
     let data_result: Result<(PostPublic, ListCommentResult), WebError> = web::block(move || {
-        let mut conn = pool.get()?;
+        let post = app_kit
+            .post_service
+            .get_post_with_user(post_id)
+            .map_err(|e| WebError::from(format!("Failed to get post: {}", e.to_string())))?;
 
-        let post = get_post_with_user(&mut conn, post_id)
-            .map_err(|e| WebError::from(format!("Failed to get post: {}", e)))?;
+        let comments = app_kit
+            .comment_service
+            .get_comments_with_user(post.post.id, &pagination_clone)
+            .map_err(|e| WebError::from(format!("Failed to get comments: {}", e.to_string())))?;
 
-        let comment = get_comments_with_user(&mut conn, post.post.id, &pagination_clone)
-            .map_err(|e| WebError::from(format!("Failed to get comments: {}", e)))?;
-
-        Ok((post, comment))
+        Ok((post, comments))
     })
     .await?;
 
@@ -164,8 +159,8 @@ pub async fn view_post_route(
 
 // #[get("/")]
 pub async fn index_list_posts_route(
+    app_kit: web::Data<AppKit>,
     pagination: QueryPagination,
-    pool: web::Data<DbPool>,
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
@@ -175,8 +170,9 @@ pub async fn index_list_posts_route(
 
     let pagination_data_clone = pagination.clone();
     let posts_result = web::block(move || {
-        let mut conn = pool.get()?;
-        get_posts_with_user(&mut conn, &pagination_data_clone)
+        app_kit
+            .post_service
+            .get_posts_with_user(&pagination_data_clone)
     })
     .await?;
 
@@ -207,8 +203,8 @@ pub async fn index_list_posts_route(
 
 #[get("/update/{post_id}")]
 pub async fn update_post_route(
+    app_kit: web::Data<AppKit>,
     req: HttpRequest,
-    pool: web::Data<DbPool>,
     hb: web::Data<Handlebars<'_>>,
     session: Session,
     path: web::Path<i32>,
@@ -217,12 +213,11 @@ pub async fn update_post_route(
 
     let post_id = path.into_inner();
 
-    let post = web::block(move || {
-        let mut conn = pool.get()?;
-        get_post_with_user(&mut conn, post_id)
-    })
-    .await?
-    .map_err(actix_web::error::ErrorInternalServerError)?;
+    let post = web::block(move || app_kit.post_service.get_post_with_user(post_id))
+        .await?
+        .map_err(|_| {
+            actix_web::error::ErrorInternalServerError("failed to get target update post")
+        })?;
 
     // check if user able to update post
     if post.user.id != session_user.id {
@@ -249,9 +244,9 @@ pub async fn update_post_route(
 
 #[post("/update/{post_id}")]
 pub async fn update_post_submit_route(
+    app_kit: web::Data<AppKit>,
     req: HttpRequest,
     form: actix_web_validator::Form<PostFormData>,
-    pool: web::Data<DbPool>,
     path: web::Path<i32>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
@@ -259,16 +254,21 @@ pub async fn update_post_submit_route(
     let session_user = get_session_user(&session)?;
 
     let update_post_result = web::block(move || {
-        let mut conn = pool.get()?;
-
-        let fetch_result = get_post_with_user(&mut conn, post_id)
+        let fetch_result = app_kit
+            .post_service
+            .get_post_with_user(post_id)
             .map_err(|e| WebError::from(format!("failed to get post {}", e)))?;
 
         if fetch_result.user.id != session_user.id {
             return Err(WebError::from("User does not own post"));
         }
 
-        update_post(&mut conn, fetch_result.post.id, &form.title, &form.body)
+        let post = app_kit
+            .post_service
+            .update_post(fetch_result.post.id, &form.title, &form.body)
+            .map_err(|e| WebError::from(format!("failed to update post {}", e)))?;
+
+        Ok(post)
     })
     .await?;
 
@@ -292,8 +292,8 @@ pub async fn update_post_submit_route(
 
 #[post("/delete/{post_id}")]
 pub async fn delete_post_route(
+    app_kit: web::Data<AppKit>,
     req: HttpRequest,
-    pool: web::Data<DbPool>,
     path: web::Path<i32>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
@@ -301,16 +301,21 @@ pub async fn delete_post_route(
     let session_user = get_session_user(&session)?;
 
     let delete_post_result = web::block(move || {
-        let mut conn = pool.get()?;
-
-        let post = get_post(&mut conn, post_id)
+        let post = app_kit
+            .post_service
+            .get_post(post_id)
             .map_err(|e| WebError::from(format!("failed to get post {}", e)))?;
 
         if post.user_id != session_user.id {
             return Err(WebError::from("User does not own post"));
         }
 
-        delete_post(&mut conn, post_id)
+        let row_affected = app_kit
+            .post_service
+            .delete_post(post_id)
+            .map_err(|e| WebError::from(format!("failed to delete post {}", e)))?;
+
+        Ok(row_affected)
     })
     .await?;
 

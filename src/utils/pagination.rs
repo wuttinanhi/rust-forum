@@ -8,7 +8,6 @@ use serde_json::json;
 use crate::{
     db::{DbPool, WebError},
     models::Post,
-    posts::repository::get_posts,
 };
 
 #[derive(Debug, Deserialize, Clone)]
@@ -80,29 +79,31 @@ impl QueryPagination {
     }
 }
 
-#[get("/test-pagination")]
-pub async fn test_pagination(
-    pagination_data: QueryPagination,
-    pool: web::Data<DbPool>,
-) -> actix_web::Result<impl Responder> {
-    let posts: Result<Vec<Post>, WebError> = web::block(move || {
-        let mut conn = pool.get()?;
-        let posts = get_posts(&mut conn, &pagination_data)?;
+// #[get("/test-pagination")]
+// pub async fn test_pagination(
+//     pagination_data: QueryPagination,
+// ) -> actix_web::Result<impl Responder> {
+//     let posts = vec![Post {
+//         id: 1,
+//         title: String::from("First Post"),
+//         body: String::from("This is the content of the first post"),
+//         user_id: 1,
+//         created_at: chrono::Utc::now().naive_utc(),
+//         updated_at: chrono::Utc::now().naive_utc(),
+//         deleted_at: None,
+//         published: true,
+//     }];
 
-        Ok(posts)
-    })
-    .await?;
+//     match posts {
+//         Ok(posts) => {
+//             let json_value = json!(posts).to_string();
 
-    match posts {
-        Ok(posts) => {
-            let json_value = json!(posts).to_string();
-
-            // pagination_data.to_string()
-            Ok(HttpResponse::Ok().json(json_value))
-        }
-        Err(_) => Ok(HttpResponse::InternalServerError().body("error")),
-    }
-}
+//             // pagination_data.to_string()
+//             Ok(HttpResponse::Ok().json(json_value))
+//         }
+//         Err(_) => Ok(HttpResponse::InternalServerError().body("error")),
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct HandlebarsPaginationResult {
