@@ -21,8 +21,9 @@
       </li>
 
       <li class="nav-item">
-        <a class="nav-link {{#if fetch_mode_comments}} active {{/if}}"
-          href="/profile/{{profile_users.id}}/comments">Comments</a>
+        <a class="nav-link {{#if fetch_mode_comments}} active {{/if}}" href="/profile/{{profile_users.id}}/comments">
+          Comments
+        </a>
       </li>
     </ul>
 
@@ -34,7 +35,7 @@
 
       <div class="card my-3 p-0" id="{{this.post.id}}">
         <div class="card-body px-3 py-2 m-0">
-          <a href="/posts/{{this.id}}">
+          <a href="/posts/{{this.post.id}}">
             {{this.post.title}}
           </a>
 

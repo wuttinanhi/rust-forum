@@ -122,8 +122,9 @@ pub async fn profile_view_route(
         json!(format!("Profile {}", user_data.name)),
     );
 
-    if fetch_mode == "posts" {
+    if fetch_mode == "posts" || fetch_mode == "" {
         let profile_users_created_posts = user_created_posts.lock().unwrap();
+
         update_handlebars_data(
             &mut hb_data,
             "profile_users_created_posts",
@@ -138,6 +139,8 @@ pub async fn profile_view_route(
             "profile_users_created_comments",
             json!(&*profile_users_created_comments),
         );
+
+        dbg!(&*profile_users_created_comments);
 
         update_handlebars_data(&mut hb_data, "fetch_mode_comments", json!(true));
     }

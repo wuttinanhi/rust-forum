@@ -1,6 +1,6 @@
 use crate::db::WebError;
 use crate::entities::comment::{CommentPublic, ListCommentResult};
-use crate::models::{Comment, NewComment, User};
+use crate::models::{Comment, NewComment, Post, User};
 use crate::utils::pagination::QueryPagination;
 use crate::utils::time::time_to_human_readable;
 use diesel::r2d2::{ConnectionManager, Pool};
@@ -178,6 +178,7 @@ impl CommentRepository for PostgresCommentRepository {
                 comment,
                 user,
                 allow_update: false,
+                parent_post: None,
             })
             .collect();
 
@@ -206,21 +207,23 @@ impl CommentRepository for PostgresCommentRepository {
 
         let comments_joined = comments
             .inner_join(users)
+            .inner_join(crate::schema::posts::table)
             .filter(user_id.eq(target_user_id))
             .filter(deleted_at.is_null())
             .order(created_at.desc())
             .limit(pagination.limit)
             .offset(pagination.get_offset())
-            .select((Comment::as_select(), User::as_select()))
-            .load::<(Comment, User)>(&mut conn)?;
+            .select((Comment::as_select(), User::as_select(), Post::as_select()))
+            .load::<(Comment, User, Post)>(&mut conn)?;
 
         let comments_mapped = comments_joined
             .into_iter()
-            .map(|(comment, user)| CommentPublic {
+            .map(|(comment, user, post)| CommentPublic {
                 time_human: time_to_human_readable(comment.created_at),
                 comment,
                 user,
                 allow_update: false,
+                parent_post: Some(post),
             })
             .collect();
 

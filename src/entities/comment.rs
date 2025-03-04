@@ -2,7 +2,7 @@ use diesel::Queryable;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::models::{Comment, User};
+use crate::models::{Comment, Post, User};
 
 #[derive(Deserialize, Validate)]
 pub struct CreateCommentFormData {
@@ -33,6 +33,7 @@ pub struct CommentPublic {
     pub user: User,
     pub time_human: String,
     pub allow_update: bool,
+    pub parent_post: Option<Post>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
