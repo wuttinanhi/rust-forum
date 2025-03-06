@@ -1,7 +1,9 @@
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use crate::{
-        entities::user::UserRegisterFormData, servers::server_actix::create_actix_app, AppKit,
+        entities::user::{UserLoginFormData, UserRegisterFormData},
+        servers::server_actix::create_actix_app,
+        AppKit,
     };
     use actix_web::http::StatusCode;
     use dotenv::dotenv;
@@ -9,8 +11,6 @@ pub mod tests {
     #[actix_web::test]
     async fn test_should_get_users_register_route() {
         dotenv().ok();
-
-        env_logger::init();
 
         let app_kit = AppKit::new();
 
@@ -31,8 +31,6 @@ pub mod tests {
     #[actix_web::test]
     async fn test_should_able_to_register_user() {
         dotenv().ok();
-
-        env_logger::init();
 
         let app_kit = AppKit::new();
 
@@ -70,5 +68,49 @@ pub mod tests {
         // println!("Response body: {}", html);
 
         // assert_eq!(resp.status(), StatusCode::OK)
+    }
+
+    #[actix_web::test]
+    async fn test_should_able_to_login_user() {
+        dotenv().ok();
+
+        env_logger::init();
+
+        let app_kit = AppKit::new();
+
+        let actix_app = create_actix_app(app_kit.clone());
+
+        let app = actix_web::test::init_service(actix_app).await;
+
+        let user_register_form_data = UserRegisterFormData {
+            email: "adam@example.com".to_string(),
+            name: "adam rustforum".to_string(),
+            password: "adampassword".to_string(),
+        };
+
+        let register_req = actix_web::test::TestRequest::post()
+            .uri("/users/register")
+            .set_form(&user_register_form_data)
+            .to_request();
+
+        let register_resp = actix_web::test::call_service(&app, register_req).await;
+
+        assert_eq!(register_resp.response().status(), StatusCode::FOUND);
+
+        let user_login_form = UserLoginFormData {
+            email: "adam@example.com".to_string(),
+            password: "adampassword".to_string(),
+        };
+
+        let login_req = actix_web::test::TestRequest::post()
+            .uri("/users/login")
+            .set_form(&user_login_form)
+            .to_request();
+
+        let login_resp = actix_web::test::call_service(&app, login_req).await;
+
+        assert_eq!(login_resp.response().status(), StatusCode::FOUND);
+
+        dbg!(login_resp.headers());
     }
 }

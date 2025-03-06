@@ -14,6 +14,7 @@ pub mod users;
 pub mod utils;
 
 pub mod servers;
+
 pub mod tests;
 
 use db::initialize_db_pool;
@@ -88,7 +89,6 @@ impl AppKit {
         let comment_service = BasedCommentService::new(comment_repo_arc.clone());
 
         // --- app kit setup ---
-        
 
         AppKit {
             user_service: Arc::new(user_service),
