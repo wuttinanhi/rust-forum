@@ -16,7 +16,9 @@ use futures::future::{ready, Ready};
 
 static NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z ]{2,16}$").unwrap());
 
-#[derive(Deserialize, Debug, Validate)]
+pub const SESSION_KEY_USER: &str = "user";
+
+#[derive(Serialize, Deserialize, Debug, Validate)]
 pub struct UserLoginFormData {
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
@@ -29,7 +31,7 @@ pub struct UserLoginFormData {
     pub password: String,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Serialize, Deserialize, Debug, Validate)]
 pub struct UserRegisterFormData {
     #[validate(regex(
         path = *NAME_REGEX,
@@ -48,7 +50,7 @@ pub struct UserRegisterFormData {
     pub password: String,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Serialize, Deserialize, Debug, Validate)]
 pub struct UserChangePasswordFormData {
     #[validate(length(
         min = 8,
@@ -70,7 +72,7 @@ pub struct UserChangePasswordFormData {
     pub confirm_password: String,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Serialize, Deserialize, Debug, Validate)]
 pub struct UserUpdateFormData {
     #[validate(regex(
         path = *NAME_REGEX,
@@ -85,19 +87,19 @@ pub struct UserUploadProfilePictureForm {
     pub profile_picture: TempFile,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Serialize, Deserialize, Debug, Validate)]
 pub struct UserPasswordResetRequest {
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Serialize, Deserialize, Debug, Validate)]
 pub struct UserPasswordResetTokenQueryString {
     #[validate(length(min = 10, max = 30, message = "Invalid token"))]
     pub token: String,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Serialize, Deserialize, Debug, Validate)]
 pub struct UserPasswordResetTokenRequest {
     #[validate(length(min = 10, max = 30, message = "Invalid token"))]
     pub token: String,

@@ -122,7 +122,7 @@ pub async fn profile_view_route(
         json!(format!("Profile {}", user_data.name)),
     );
 
-    if fetch_mode == "posts" || fetch_mode == "" {
+    if fetch_mode == "posts" || fetch_mode.is_empty() {
         let profile_users_created_posts = &*user_created_posts.lock().unwrap();
 
         update_handlebars_data(

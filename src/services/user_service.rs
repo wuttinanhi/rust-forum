@@ -62,6 +62,7 @@ impl BasedUserService {
     }
 }
 
+#[derive(Debug)]
 pub enum UserServiceError {
     ErrorLogin,
     ErrorRegister,

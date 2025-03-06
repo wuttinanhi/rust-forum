@@ -1,6 +1,6 @@
 use actix_session::Session;
 
-use crate::users::{constants::SESSION_KEY_USER, types::UserPublic};
+use crate::entities::user::{UserPublic, SESSION_KEY_USER};
 
 pub fn get_session_user(session: &Session) -> Result<UserPublic, actix_web::Error> {
     if let Ok(Some(user)) = session.get::<UserPublic>(SESSION_KEY_USER) {

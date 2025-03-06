@@ -70,7 +70,16 @@ pub struct NewComment<'a> {
 }
 
 #[derive(
-    Queryable, Selectable, Identifiable, Debug, Eq, PartialEq, AsChangeset, Serialize, Deserialize,
+    Queryable,
+    Selectable,
+    Identifiable,
+    Debug,
+    Eq,
+    PartialEq,
+    AsChangeset,
+    Serialize,
+    Deserialize,
+    Clone,
 )]
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]

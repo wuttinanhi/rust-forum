@@ -25,29 +25,29 @@ use rust_forum::controllers::post_controller::{
 use rust_forum::controllers::profile_controller::profile_view_route;
 use rust_forum::db::run_migrations;
 
+use rust_forum::controllers::user_controller::{
+    users_changepassword_post_route, users_profile_picture_upload_post_route,
+    users_resetpassword_post_route, users_resetpassword_route, users_resetpasswordtoken_post_route,
+    users_resetpasswordtoken_route, users_settings_route, users_update_data_post_route,
+};
 use rust_forum::repositories::comment_repository::PostgresCommentRepository;
 use rust_forum::repositories::post_repository::PostgresPostRepository;
 use rust_forum::repositories::token_repository::PostgresTokenRepository;
-use rust_forum::repositories::user_repository::PostgresUserRepository;
+use rust_forum::repositories::user_repository_postgres::PostgresUserRepository;
 use rust_forum::routes::error_handler::error_handler;
 use rust_forum::services::comment_service::BasedCommentService;
 use rust_forum::services::email_service::BasedEmailService;
 use rust_forum::services::post_service::BasedPostService;
 use rust_forum::services::token_service::BasedTokenService;
 use rust_forum::services::user_service::BasedUserService;
-use rust_forum::users::route::{
-    users_changepassword_post_route, users_profile_picture_upload_post_route,
-    users_resetpassword_post_route, users_resetpassword_route, users_resetpasswordtoken_post_route,
-    users_resetpasswordtoken_route, users_settings_route, users_update_data_post_route,
-};
 use rust_forum::utils::pagination::handlebars_pagination_helper;
 use rust_forum::AppKit;
 use rust_forum::{
-    db::initialize_db_pool,
-    users::route::{
+    controllers::user_controller::{
         users_login_post_route, users_login_route, users_logout, users_register_post_route,
         users_register_route,
     },
+    db::initialize_db_pool,
 };
 
 use actix_files as fs;
