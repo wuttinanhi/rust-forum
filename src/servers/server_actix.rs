@@ -1,5 +1,6 @@
 use actix_cors::Cors;
 use actix_limitation::{Limiter, RateLimiter};
+use actix_multipart::form::MultipartFormConfig;
 use actix_session::config::PersistentSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::body::{BoxBody, EitherBody};
@@ -31,7 +32,8 @@ use crate::controllers::user_controller::{
     users_login_post_route, users_login_route, users_logout, users_register_post_route,
     users_register_route,
 };
-use crate::routes::error_handler::error_handler;
+
+use crate::servers::actix_error_handler::{actix_error_handler, handle_multipart_error};
 use crate::utils::pagination::handlebars_pagination_helper;
 use crate::AppKit;
 
@@ -201,16 +203,23 @@ pub fn create_actix_app(
     // --- init app ---
 
     App::new()
-        .wrap(ErrorHandlers::new().default_handler(error_handler))
+        // error handlers
+        .wrap(ErrorHandlers::new().default_handler(actix_error_handler))
+        .app_data(MultipartFormConfig::default().error_handler(handle_multipart_error))
+        // handlebars
         .app_data(handlebars_ref.clone())
+        // limiter
         .wrap(RateLimiter::default())
         .app_data(limiter.clone())
-        // .app_data(MultipartFormConfig::default().error_handler(handle_multipart_error))
+        // path fix
         .wrap(NormalizePath::new(TrailingSlash::Trim))
+        // static files
         .service(fs::Files::new("/static", "./static"))
         // increase payload size
         .app_data(web::PayloadConfig::new(50_000))
+        // cors
         .wrap(cors_middleware)
+        // cookies
         .wrap(cookie_session_middleware)
         // app kit
         .app_data(app_kit_web_data.clone())

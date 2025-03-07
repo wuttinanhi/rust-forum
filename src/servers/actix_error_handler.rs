@@ -10,6 +10,7 @@ use actix_web::{
     middleware::ErrorHandlerResponse,
     Result,
 };
+use actix_web::{HttpRequest, HttpResponse};
 
 pub fn actix_error_handler<B>(service_res: ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
     let (req, mut res) = service_res.into_parts();
@@ -49,4 +50,13 @@ pub fn actix_error_handler<B>(service_res: ServiceResponse<B>) -> Result<ErrorHa
         req,
         res.map_into_left_body(),
     )))
+}
+
+// apply large file upload fix from https://github.com/actix/actix-web/issues/3152#issuecomment-2539018905
+pub fn handle_multipart_error(
+    err: actix_multipart::MultipartError,
+    _req: &HttpRequest,
+) -> actix_web::Error {
+    let response = HttpResponse::BadRequest().force_close().finish();
+    actix_web::error::InternalError::from_response(err, response).into()
 }
