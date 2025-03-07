@@ -1,16 +1,13 @@
 pub mod models;
 pub mod schema;
 
-pub mod routes;
-
-pub mod comments;
-pub mod controllers;
 pub mod db;
+
+pub mod controllers;
 pub mod entities;
-pub mod posts;
 pub mod repositories;
 pub mod services;
-pub mod users;
+
 pub mod utils;
 
 pub mod servers;

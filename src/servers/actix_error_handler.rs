@@ -11,7 +11,7 @@ use actix_web::{
     Result,
 };
 
-pub fn error_handler<B>(service_res: ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
+pub fn actix_error_handler<B>(service_res: ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
     let (req, mut res) = service_res.into_parts();
     let response_error = res.error();
     let session = req.get_session();
