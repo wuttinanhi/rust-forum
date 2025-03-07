@@ -4,12 +4,12 @@ use actix_session::config::PersistentSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::body::{BoxBody, EitherBody};
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
+use actix_web::http;
 use actix_web::{
     cookie::Key,
     web::{self},
     App,
 };
-use actix_web::{http, Error};
 use handlebars::{DirectorySourceOptions, Handlebars};
 
 use crate::controllers::comment_controller::{
@@ -39,14 +39,16 @@ use actix_files as fs;
 use actix_web::middleware::TrailingSlash;
 use actix_web::middleware::{ErrorHandlers, NormalizePath};
 
+type NestedBody = EitherBody<EitherBody<EitherBody<BoxBody, BoxBody>, BoxBody>, BoxBody>;
+
 pub fn create_actix_app(
     app_kit: AppKit,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
         Config = (),
-        Response = ServiceResponse<EitherBody<EitherBody<EitherBody<BoxBody>>>>,
-        Error = Error,
+        Response = ServiceResponse<NestedBody>,
+        Error = actix_web::Error,
         InitError = (),
     >,
 > {

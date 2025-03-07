@@ -25,7 +25,7 @@ mod tests {
 
         // assert_eq!(true, true);
 
-        assert_eq!(*&resp.status(), StatusCode::OK)
+        assert_eq!(resp.status(), StatusCode::OK)
     }
 
     #[actix_web::test]
