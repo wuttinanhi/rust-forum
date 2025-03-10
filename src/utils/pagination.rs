@@ -4,7 +4,6 @@ use actix_web::{Error, FromRequest, HttpRequest};
 use futures::future::{ready, Ready};
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct QueryPagination {
     pub page: i64,
@@ -74,32 +73,6 @@ impl QueryPagination {
     }
 }
 
-// #[get("/test-pagination")]
-// pub async fn test_pagination(
-//     pagination_data: QueryPagination,
-// ) -> actix_web::Result<impl Responder> {
-//     let posts = vec![Post {
-//         id: 1,
-//         title: String::from("First Post"),
-//         body: String::from("This is the content of the first post"),
-//         user_id: 1,
-//         created_at: chrono::Utc::now().naive_utc(),
-//         updated_at: chrono::Utc::now().naive_utc(),
-//         deleted_at: None,
-//         published: true,
-//     }];
-
-//     match posts {
-//         Ok(posts) => {
-//             let json_value = json!(posts).to_string();
-
-//             // pagination_data.to_string()
-//             Ok(HttpResponse::Ok().json(json_value))
-//         }
-//         Err(_) => Ok(HttpResponse::InternalServerError().body("error")),
-//     }
-// }
-
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct HandlebarsPaginationResult {
     pub page: i64,
@@ -119,13 +92,29 @@ pub fn build_handlebars_pagination_result(
 }
 
 use handlebars::{Context, Handlebars, Helper, HelperResult, Output, RenderContext};
+use serde_json::json;
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct HandleBarsPaginationPerPage {
+    pub option_tag_attr: String,
+    pub limit: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct HandlebarsPaginationRenderContext {
+    pub page: i64,
+    pub per_page: i64,
+
+    pub pages: Vec<i64>,
+    pub per_pages: Vec<HandleBarsPaginationPerPage>,
+}
 
 pub fn handlebars_pagination_helper(
     h: &Helper,
-    _: &Handlebars,
+    hb_registry: &Handlebars,
     _: &Context,
     _: &mut RenderContext,
-    out: &mut dyn Output,
+    output: &mut dyn Output,
 ) -> HelperResult {
     let pagination_result = h.param(0).ok_or_else(|| {
         handlebars::RenderErrorReason::ParamNotFoundForIndex("pagination_result", 0)
@@ -133,7 +122,7 @@ pub fn handlebars_pagination_helper(
 
     let pagination_result_json = pagination_result.value();
 
-    // pagination_result first param maybe null if no records
+    // pagination_result first param maybe null if no records then just exit
     if pagination_result_json.is_null() {
         return Ok(());
     }
@@ -142,75 +131,35 @@ pub fn handlebars_pagination_helper(
         serde_json::from_value(pagination_result_json.clone())
             .map_err(|e| handlebars::RenderErrorReason::InvalidJsonIndex(e.to_string()))?;
 
-    let mut output_html = String::new();
+    let pages: Vec<i64> = (1..=pagination_result.total_pages).collect();
 
-    output_html.push_str(
-        "<div id=\"pagination\" class=\"mt-3\">
-            <nav aria-label=\"Page navigation example\">
-                <ul class=\"pagination justify-content-end\">
-        ",
-    );
-
-    for page in 1..=pagination_result.total_pages {
-        output_html.push_str(&format!(
-            "<li class=\"page-item\"><a class=\"page-link\" href=\"?page={}&per_page={}\">{}</a></li>",
-            page, pagination_result.limit, page,
-        ));
-    }
-
-    output_html.push_str(&format!("
- <div class=\"px-2\">
-    <form method=\"get\" action=\"\" class=\"input-group mb-3\">
-        <input name=\"page\" type=\"number\" value=\"{}\" min=\"1\" class=\"form-control\" placeholder=\"Page\"
-            style=\"width: 4rem;\" aria-label=\"Page\" aria-describedby=\"button-addon2\">
-
-        <input name=\"per_page\" type=\"hidden\" value=\"{}\" style=\"display: none;\">
-
-        <button class=\"btn btn-outline-primary\" type=\"submit\" id=\"button-addon2\">Go</button>
-    </form>
-</div>
-
-<div class=\"px-2\">
-    <div class=\"input-group\">
-        <select class=\"form-select\" id=\"page_limit\" onchange=\"javascript:handleSelect(this)\" aria-label=\"page limit\" style=\"height: 2.5rem;\">
-",
-                            pagination_result.page, pagination_result.limit
-    ));
-
-    for limit in [10, 20, 50, 100].iter() {
-        let should_selected = if pagination_result.limit == *limit {
+    let mut per_pages: Vec<HandleBarsPaginationPerPage> = vec![];
+    for limit in [10, 20, 50, 100].into_iter() {
+        let option_select_attr = if pagination_result.limit == limit {
             "selected"
         } else {
             ""
         };
 
-        output_html.push_str(&format!(
-            "<option value=\"?page={}&per_page={}\" {}>{}</option>",
-            pagination_result.page, limit, should_selected, limit
-        ));
+        per_pages.push(HandleBarsPaginationPerPage {
+            option_tag_attr: option_select_attr.to_string(),
+            limit,
+        });
     }
 
-    output_html.push_str(
-        "
-    </select>
-                        </div>
-                    </div>
+    let hb_pagination_render_context = HandlebarsPaginationRenderContext {
+        page: pagination_result.page,
+        per_page: pagination_result.limit,
+        pages,
+        per_pages,
+    };
 
-                </ul>
-            </nav>
-        </div>
-        
-<script type=\"text/javascript\">
-    function handleSelect(elm){
-        window.location = elm.value;
-    }
-</script>
+    let output_html = hb_registry.render(
+        "pagination",
+        &json!({ "pagination": hb_pagination_render_context }),
+    )?;
 
-
-",
-    );
-
-    out.write(&output_html)?;
+    output.write(&output_html)?;
 
     Ok(())
 }
