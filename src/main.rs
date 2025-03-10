@@ -104,6 +104,7 @@ async fn main() -> std::io::Result<()> {
             comment_service: comment_service_arc.clone(),
         };
 
+        
         create_actix_app(app_kit)
     })
     .bind((host, port))?

@@ -33,7 +33,8 @@ use crate::controllers::user_controller::{
     users_register_route,
 };
 
-use crate::servers::actix_error_handler::{actix_error_handler, handle_multipart_error};
+use crate::servers::actix_etc::actix_fallback_error_handler::actix_fallback_error_handler;
+use crate::servers::actix_etc::actix_multipart_error_handler::actix_multipart_error_handler;
 use crate::utils::pagination::handlebars_pagination_helper;
 use crate::AppKit;
 
@@ -204,8 +205,8 @@ pub fn create_actix_app(
 
     App::new()
         // error handlers
-        .wrap(ErrorHandlers::new().default_handler(actix_error_handler))
-        .app_data(MultipartFormConfig::default().error_handler(handle_multipart_error))
+        .wrap(ErrorHandlers::new().default_handler(actix_fallback_error_handler))
+        .app_data(MultipartFormConfig::default().error_handler(actix_multipart_error_handler))
         // handlebars
         .app_data(handlebars_ref.clone())
         // limiter
