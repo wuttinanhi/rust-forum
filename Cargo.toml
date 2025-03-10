@@ -33,6 +33,7 @@ uuid = "1.15.1"
 [[bin]]
 name = "rustforum"
 path = "src/main.rs"
+
 # doc = false
 
 # [lib]
