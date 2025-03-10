@@ -153,11 +153,11 @@ pub fn handlebars_pagination_helper(
         pages,
         per_pages,
     };
+    let json_value = json!({ "pagination": hb_pagination_render_context });
 
-    let output_html = hb_registry.render(
-        "pagination",
-        &json!({ "pagination": hb_pagination_render_context }),
-    )?;
+    dbg!(&json_value);
+
+    let output_html = hb_registry.render("pagination", &json_value)?;
 
     output.write(&output_html)?;
 

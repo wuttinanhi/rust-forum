@@ -3,10 +3,11 @@
     <ul class="pagination justify-content-end">
 
       {{#each pagination.pages}}
+
         <li class="page-item">
           <a
             class="page-link"
-            href="?page={{this}}&per_page={{pagination.per_page}}"
+            href="?page={{this}}&per_page={{ ../pagination.per_page }}"
           >
             {{this}}
           </a>
