@@ -15,10 +15,18 @@ services:
       - "DATABASE_URL=postgres://postgres:example@db/postgres"
       - "REDIS_HOST=redis"
       - "REDIS_PASSWORD=redis123"
+      - "APP_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000"
+      - "SMTP_HOST=UPDATE_ME"
+      - "SMTP_EMAIL=UPDATE_ME"
+      - "SMPTP_PASSWORD=UPDATE_ME"
+      - "APP_DOMAIN_URL=http://localhost:3000"
+      - "COOKIE_KEY=a_very_long_cookie_secret_a_very_long_cookie_secret_a_very_long_cookie_secret"
+      - "STATIC_FILE_DIR=/app/static"
     ports:
       - "3000:3000"
     volumes:
-      - "prod_static:/app/static"
+      # - "prod_static:/app/static"
+      - "./static:/app/static"
 
   db:
     image: postgres

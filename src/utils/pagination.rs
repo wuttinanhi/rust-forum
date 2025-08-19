@@ -155,7 +155,7 @@ pub fn handlebars_pagination_helper(
     };
     let json_value = json!({ "pagination": hb_pagination_render_context });
 
-    dbg!(&json_value);
+    // dbg!(&json_value);
 
     let output_html = hb_registry.render("pagination", &json_value)?;
 

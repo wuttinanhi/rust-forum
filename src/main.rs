@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use actix_web::HttpServer;
 
-use rust_forum::db::initialize_db_pool;
+use rust_forum::db::{initialize_db_pool, run_migrations};
 use rust_forum::repositories::comment_repository::PostgresCommentRepository;
 use rust_forum::repositories::post_repository::PostgresPostRepository;
 use rust_forum::repositories::token_repository::PostgresTokenRepository;
@@ -13,13 +13,12 @@ use rust_forum::services::email_service::BasedEmailService;
 use rust_forum::services::post_service::BasedPostService;
 use rust_forum::services::token_service::BasedTokenService;
 use rust_forum::services::user_service::BasedUserService;
-use rust_forum::AppKit;
+use rust_forum::{establish_connection, AppKit};
 
 use dotenv::dotenv;
 
-use diesel_migrations::{embed_migrations, EmbeddedMigrations};
-
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations/");
+pub const MIGRATIONS: diesel_migrations::EmbeddedMigrations =
+    diesel_migrations::embed_migrations!("./migrations/");
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -50,6 +49,10 @@ async fn main() -> std::io::Result<()> {
 
     let db_pool_arc = Arc::new(db_pool.clone());
 
+    // run migrations
+    let mut conn = establish_connection();
+    run_migrations(&mut conn, MIGRATIONS).expect("failed to run migrations");
+
     // --- repository setup ---
     //
     // Note:
@@ -68,40 +71,43 @@ async fn main() -> std::io::Result<()> {
     // as Arc<dyn PostRepository<Error = WebError>>
 
     let post_repo = PostgresPostRepository::new(db_pool_arc.clone());
-    let post_repo_arc = Arc::new(post_repo);
+    let post_repo = Arc::new(post_repo);
 
     let comment_repo = PostgresCommentRepository::new(db_pool_arc.clone());
     // let comment_repo_web_data: actix_web::web::Data<Arc<dyn CommentRepository<Error = WebError>>> =
     //     actix_web::web::Data::new(Arc::new(comment_repo));
-    let comment_repo_arc = Arc::new(comment_repo);
+    let comment_repo = Arc::new(comment_repo);
 
     let token_repo = PostgresTokenRepository::new(db_pool_arc.clone());
-    let token_repo_arc = Arc::new(token_repo);
+    let token_repo = Arc::new(token_repo);
 
     let user_repo = PostgresUserRepository::new(db_pool_arc.clone());
-    let user_repo_arc = Arc::new(user_repo);
+    let user_repo = Arc::new(user_repo);
 
     // --- service setup ---
-    let token_service = BasedTokenService::new(token_repo_arc.clone());
-    let email_service = BasedEmailService::new();
-    let user_service = BasedUserService::new(user_repo_arc.clone(), token_repo_arc.clone());
-    let post_service = BasedPostService::new(post_repo_arc.clone());
-    let comment_service = BasedCommentService::new(comment_repo_arc.clone());
+    let token_service = BasedTokenService::new(token_repo.clone());
+    let token_service = Arc::new(token_service);
 
-    let user_service_arc = Arc::new(user_service);
-    let email_service_arc = Arc::new(email_service);
-    let token_service_arc = Arc::new(token_service);
-    let post_service_arc = Arc::new(post_service);
-    let comment_service_arc = Arc::new(comment_service);
+    let email_service = BasedEmailService::new();
+    let email_service = Arc::new(email_service);
+
+    let user_service = BasedUserService::new(user_repo.clone(), token_repo.clone());
+    let user_service = Arc::new(user_service);
+
+    let post_service = BasedPostService::new(post_repo.clone());
+    let post_service = Arc::new(post_service);
+
+    let comment_service = BasedCommentService::new(comment_repo.clone());
+    let comment_service = Arc::new(comment_service);
 
     HttpServer::new(move || {
         // --- app kit setup ---
         let app_kit = AppKit {
-            user_service: user_service_arc.clone(),
-            email_service: email_service_arc.clone(),
-            token_service: token_service_arc.clone(),
-            post_service: post_service_arc.clone(),
-            comment_service: comment_service_arc.clone(),
+            user_service: user_service.clone(),
+            email_service: email_service.clone(),
+            token_service: token_service.clone(),
+            post_service: post_service.clone(),
+            comment_service: comment_service.clone(),
         };
 
         create_actix_app(app_kit)

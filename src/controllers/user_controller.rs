@@ -300,17 +300,26 @@ pub async fn users_profile_picture_upload_post_route(
     }
 
     // generate save file path
+    let static_file_dir_path =
+        std::env::var("STATIC_FILE_DIR").unwrap_or("/app/static".to_string());
     let unix_time = chrono::Utc::now().timestamp();
-    let file_path = format!("static/{}.jpg", unix_time);
+    let file_path = format!("{}/{}.jpg", static_file_dir_path, unix_time);
 
     let session_user = get_session_user(&session)?;
 
     web::block(move || {
+        dbg!(&file_path);
+
         // save file
         form.profile_picture
             .file
             .persist(&file_path)
             .map_err(WebError::from)?;
+
+        println!(
+            "saved profile picture of user {} to {}",
+            session_user.id, file_path
+        );
 
         // add slash to make it accessible from client
         let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
