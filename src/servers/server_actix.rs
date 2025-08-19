@@ -78,8 +78,11 @@ pub fn create_actix_app(
     println!("ratelimit_redis_url: {:?}", &ratelimit_redis_url);
     // let ratelimit_redis_url = ratelimit_redis_url.clone();
 
+    // -- setup static file directory --
+    let static_file_dir_path =
+        std::env::var("STATIC_FILE_DIR").unwrap_or("/app/static".to_string());
     // Create static directory if not exists
-    std::fs::create_dir_all("./static").expect("Failed to create static directory");
+    std::fs::create_dir_all(&static_file_dir_path).expect("Failed to create static directory");
 
     // --- handlebars setup ---
     let mut handlebars = Handlebars::new();
@@ -214,8 +217,8 @@ pub fn create_actix_app(
         .app_data(limiter.clone())
         // path fix
         .wrap(NormalizePath::new(TrailingSlash::Trim))
-        // static files
-        .service(fs::Files::new("/static", "./static"))
+        // static file serving
+        .service(fs::Files::new("/static", &static_file_dir_path))
         // increase payload size
         .app_data(web::PayloadConfig::new(50_000))
         // cors

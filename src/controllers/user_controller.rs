@@ -303,26 +303,42 @@ pub async fn users_profile_picture_upload_post_route(
     let static_file_dir_path =
         std::env::var("STATIC_FILE_DIR").unwrap_or("/app/static".to_string());
     let unix_time = chrono::Utc::now().timestamp();
-    let file_path = format!("{}/{}.jpg", static_file_dir_path, unix_time);
+    let filename = format!("{}.jpg", unix_time);
+    let static_file_path = format!("{static_file_dir_path}/{filename}");
 
     let session_user = get_session_user(&session)?;
 
     web::block(move || {
-        dbg!(&file_path);
+        dbg!(&static_file_path);
 
-        // save file
+        // save file to static file directory
+
+        // fixing Invalid cross-device link (os error 18)
+        // this happens when we try to rename a file to different filesystem
+        // we fix by persist the file to a temporary location first
+        // then copy it to the static file directory and delete the temporary file
+        let tmp_file_path = format!("/tmp/{unix_time}.jpg");
         form.profile_picture
             .file
-            .persist(&file_path)
+            .persist(&tmp_file_path)
             .map_err(WebError::from)?;
+
+        // copy the file to the static file directory
+        std::fs::copy(&tmp_file_path, &static_file_path).map_err(|e| {
+            WebError::from(format!("Failed to copy file to static directory: {}", e))
+        })?;
+
+        // delete the temporary file
+        std::fs::remove_file(&tmp_file_path)
+            .map_err(|e| WebError::from(format!("Failed to delete temporary file: {}", e)))?;
 
         println!(
             "saved profile picture of user {} to {}",
-            session_user.id, file_path
+            session_user.id, static_file_path
         );
 
         // add slash to make it accessible from client
-        let user_profile_picture_url_pre_slash = format!("/{}", &file_path);
+        let public_static_url = format!("/static/{}", &filename);
 
         let db_user = app_kit
             .user_service
@@ -336,15 +352,12 @@ pub async fn users_profile_picture_upload_post_route(
                 db_user.id,
                 &UpdateUserNameAndProfilePicture {
                     name: None,
-                    user_profile_picture_url: Some(&user_profile_picture_url_pre_slash),
+                    user_profile_picture_url: Some(&public_static_url),
                 },
             )
             .map_err(|e| WebError::from(e.to_string()))?;
 
-        println!(
-            "user profile picture uploaded: {}",
-            &user_profile_picture_url_pre_slash
-        );
+        println!("user profile picture uploaded: {}", &public_static_url);
 
         Ok::<_, WebError>(())
     })
