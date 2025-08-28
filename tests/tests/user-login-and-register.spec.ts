@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
-
-const USER_FULL_NAME = `usertest${Date.now()}`;
-const USER_EMAIL = `${USER_FULL_NAME}@example.com`;
-const USER_PASSWORD = `${USER_FULL_NAME}-password`;
+import {
+  getUserEmail,
+  getUserFullName,
+  getUserPassword,
+} from "../constants/user";
 
 test.describe("User Login And Register Test", () => {
   test("register", async ({ page }) => {
@@ -12,11 +13,11 @@ test.describe("User Login And Register Test", () => {
       "#navbarSupportedContent > ul.navbar-nav.mr-auto.mb-2.mb-lg-0 > li:nth-child(1) > a"
     );
 
-    await page.fill("#inputName", USER_FULL_NAME);
+    await page.fill("#inputName", getUserFullName());
 
-    await page.fill("#inputEmail", USER_EMAIL);
+    await page.fill("#inputEmail", getUserEmail());
 
-    await page.fill("#inputPassword", USER_PASSWORD);
+    await page.fill("#inputPassword", getUserPassword());
 
     await page.click(
       "body > div > div.row.mt-5 > div.col-6 > form > div > label > input[type=checkbox]"
@@ -34,9 +35,13 @@ test.describe("User Login And Register Test", () => {
     await page.goto("http://localhost:3000/");
     await page.getByRole("link", { name: "Login" }).click();
 
-    await page.getByRole("textbox", { name: "Email address" }).fill(USER_EMAIL);
+    await page
+      .getByRole("textbox", { name: "Email address" })
+      .fill(getUserEmail());
 
-    await page.getByRole("textbox", { name: "Password" }).fill(USER_PASSWORD);
+    await page
+      .getByRole("textbox", { name: "Password" })
+      .fill(getUserPassword());
 
     await page.getByRole("button", { name: "Sign in" }).click();
 
