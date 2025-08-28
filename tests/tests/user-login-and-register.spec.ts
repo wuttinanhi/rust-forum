@@ -6,6 +6,10 @@ import {
 } from "../constants/user";
 
 test.describe("User Login And Register Test", () => {
+  test.describe.configure({
+    mode: "serial",
+  });
+
   test("register", async ({ page }) => {
     await page.goto("http://localhost:3000");
 
