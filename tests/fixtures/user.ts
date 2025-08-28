@@ -7,9 +7,10 @@ export interface CreateUserResult {
 }
 
 export async function createUserWrapper(page: Page): Promise<CreateUserResult> {
-  let USER_FULL_NAME = `usertest${Date.now()}`;
-  let USER_EMAIL = `${USER_FULL_NAME}@example.com`;
-  let USER_PASSWORD = `${USER_FULL_NAME}-password`;
+  let USER_ID = `${Date.now()}${Math.floor(100 + Math.random() * 900)}`;
+  let USER_FULL_NAME = `usertest${USER_ID}`;
+  let USER_EMAIL = `${USER_ID}@example.com`;
+  let USER_PASSWORD = `${USER_ID}-password`;
 
   await page.goto("http://localhost:3000");
 
