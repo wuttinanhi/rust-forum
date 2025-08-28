@@ -14,7 +14,7 @@ use crate::models::User;
 
 use futures::future::{ready, Ready};
 
-static NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9 ]{2,16}$").unwrap());
+static NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9 ]{2,32}$").unwrap());
 
 pub const SESSION_KEY_USER: &str = "user";
 
@@ -35,7 +35,7 @@ pub struct UserLoginFormData {
 pub struct UserRegisterFormData {
     #[validate(regex(
         path = *NAME_REGEX,
-        message = "Name must contain only letters, numbers and spaces. length between 2 and 16."
+        message = "Name must contain only letters, numbers and spaces. length between 2 and 32."
     ))]
     pub name: String,
 
@@ -76,7 +76,7 @@ pub struct UserChangePasswordFormData {
 pub struct UserUpdateFormData {
     #[validate(regex(
         path = *NAME_REGEX,
-        message = "Name must contain only letters, numbers and spaces. length between 2 and 16."
+        message = "Name must contain only letters, numbers and spaces. length between 2 and 32."
     ))]
     pub new_name: String,
 }
