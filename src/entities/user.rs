@@ -84,7 +84,7 @@ pub struct UserUpdateFormData {
 #[derive(Debug, MultipartForm)]
 pub struct UserUploadProfilePictureForm {
     #[multipart(limit = "10MB")]
-    pub profile_picture: TempFile,
+    pub new_profile_picture: TempFile,
 }
 
 #[derive(Serialize, Deserialize, Debug, Validate)]

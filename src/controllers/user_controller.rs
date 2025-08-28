@@ -284,7 +284,7 @@ pub async fn users_profile_picture_upload_post_route(
 ) -> actix_web::Result<impl Responder> {
     // check content type
     let content_type = form
-        .profile_picture
+        .new_profile_picture
         .content_type
         .ok_or_else(|| actix_web::error::ErrorBadRequest("Invalid MIME type"))?;
 
@@ -294,7 +294,7 @@ pub async fn users_profile_picture_upload_post_route(
     }
 
     // check file size
-    let size = form.profile_picture.size;
+    let size = form.new_profile_picture.size;
     if size > 10 * 1024 * 1024 {
         return Err(actix_web::error::ErrorBadRequest("File too large"));
     }
@@ -318,7 +318,7 @@ pub async fn users_profile_picture_upload_post_route(
         // we fix by persist the file to a temporary location first
         // then copy it to the static file directory and delete the temporary file
         let tmp_file_path = format!("/tmp/{unix_time}.jpg");
-        form.profile_picture
+        form.new_profile_picture
             .file
             .persist(&tmp_file_path)
             .map_err(WebError::from)?;

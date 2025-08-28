@@ -8,18 +8,22 @@
     <hr>
 
     <form class="form mt-3" method="post" action="/users/profilepicture" enctype="multipart/form-data">
-      <div class="my-2">
-        <img src="{{ user.user_profile_picture_url }}" class="rounded mx-auto d-block rounded-circle"
+      <div class="my-2 flex flex-col justify-center">
+        <img src="{{ user.user_profile_picture_url }}" class="self-center rounded mx-auto d-block rounded-circle"
           style="width: 150px; height: 150px;">
+
+          <br/>
+
+          <h3 class="text-center">{{user.name}}</h3>
       </div>
 
       <div class="mb-3">
         <label for="profile_picture" class="form-label">Profile picture</label>
 
         <div class="input-group mb-3">
-          <input class="form-control" type="file" id="profile_picture" name="input-new-profile-picture">
+          <input class="form-control" type="file" id="profile_picture" name="new_profile_picture">
 
-          <button class="btn btn-primary btn-block" type="submit" id="submit-profile-picture">
+          <button class="btn btn-primary btn-block" type="submit" id="submit_profile_picture">
             Upload
           </button>
         </div>
@@ -77,6 +81,7 @@
         Logout
       </button>
     </form>
+
   </div>
   <div class="col"></div>
 </div>
