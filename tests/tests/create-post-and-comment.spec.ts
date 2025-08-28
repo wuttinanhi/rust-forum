@@ -1,22 +1,29 @@
 import { expect, test } from "@playwright/test";
-import { createUserWrapper, loginUserWrapper } from "../fixtures/user";
+import {
+  CreateUserResult,
+  createUserWrapper,
+  loginUserWrapper,
+} from "../fixtures/user";
 
 let CREATED_POST_URL: string;
 
 test.describe("Create Post and Comment Test", () => {
+  let CREATED_USER: CreateUserResult;
+
   test.describe.configure({
     mode: "serial",
   });
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     let page = await browser.newPage();
-    await createUserWrapper(page);
+
+    CREATED_USER = await createUserWrapper(page);
   });
 
   test("create post", async ({ page }) => {
     await page.goto("http://localhost:3000/");
 
-    await loginUserWrapper(page);
+    await loginUserWrapper(page, CREATED_USER);
 
     await page.waitForLoadState("domcontentloaded");
 
@@ -42,7 +49,7 @@ test.describe("Create Post and Comment Test", () => {
   test("create comment", async ({ page }) => {
     await page.goto("http://localhost:3000/");
 
-    await loginUserWrapper(page);
+    await loginUserWrapper(page, CREATED_USER);
 
     await page.goto(CREATED_POST_URL);
 

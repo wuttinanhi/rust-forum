@@ -1,9 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  getUserEmail,
-  getUserFullName,
-  getUserPassword,
-} from "../constants/user";
+import { createUserWrapper } from "../fixtures/user";
 
 test.describe("User Login And Register Test", () => {
   test.describe.configure({
@@ -11,17 +7,21 @@ test.describe("User Login And Register Test", () => {
   });
 
   test("register", async ({ page }) => {
+    let USER_FULL_NAME = `usertest${Date.now()}`;
+    let USER_EMAIL = `${USER_FULL_NAME}@example.com`;
+    let USER_PASSWORD = `${USER_FULL_NAME}-password`;
+
     await page.goto("http://localhost:3000");
 
     await page.click(
       "#navbarSupportedContent > ul.navbar-nav.mr-auto.mb-2.mb-lg-0 > li:nth-child(1) > a"
     );
 
-    await page.fill("#inputName", getUserFullName());
+    await page.fill("#inputName", USER_FULL_NAME);
 
-    await page.fill("#inputEmail", getUserEmail());
+    await page.fill("#inputEmail", USER_EMAIL);
 
-    await page.fill("#inputPassword", getUserPassword());
+    await page.fill("#inputPassword", USER_PASSWORD);
 
     await page.click(
       "body > div > div.row.mt-5 > div.col-6 > form > div > label > input[type=checkbox]"
@@ -36,16 +36,18 @@ test.describe("User Login And Register Test", () => {
   });
 
   test("login", async ({ page }) => {
+    let CREATED_USER = await createUserWrapper(page);
+
     await page.goto("http://localhost:3000/");
     await page.getByRole("link", { name: "Login" }).click();
 
     await page
       .getByRole("textbox", { name: "Email address" })
-      .fill(getUserEmail());
+      .fill(CREATED_USER.userEmail);
 
     await page
       .getByRole("textbox", { name: "Password" })
-      .fill(getUserPassword());
+      .fill(CREATED_USER.userPassword);
 
     await page.getByRole("button", { name: "Sign in" }).click();
 

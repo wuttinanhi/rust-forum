@@ -1,22 +1,27 @@
 import { expect, Page } from "@playwright/test";
-import {
-  getUserEmail,
-  getUserFullName,
-  getUserPassword,
-} from "../constants/user";
 
-export async function createUserWrapper(page: Page) {
+export interface CreateUserResult {
+  userFullName: string;
+  userEmail: string;
+  userPassword: string;
+}
+
+export async function createUserWrapper(page: Page): Promise<CreateUserResult> {
+  let USER_FULL_NAME = `usertest${Date.now()}`;
+  let USER_EMAIL = `${USER_FULL_NAME}@example.com`;
+  let USER_PASSWORD = `${USER_FULL_NAME}-password`;
+
   await page.goto("http://localhost:3000");
 
   await page.click(
     "#navbarSupportedContent > ul.navbar-nav.mr-auto.mb-2.mb-lg-0 > li:nth-child(1) > a"
   );
 
-  await page.fill("#inputName", getUserFullName());
+  await page.fill("#inputName", USER_FULL_NAME);
 
-  await page.fill("#inputEmail", getUserEmail());
+  await page.fill("#inputEmail", USER_EMAIL);
 
-  await page.fill("#inputPassword", getUserPassword());
+  await page.fill("#inputPassword", USER_PASSWORD);
 
   await page.click(
     "body > div > div.row.mt-5 > div.col-6 > form > div > label > input[type=checkbox]"
@@ -28,9 +33,23 @@ export async function createUserWrapper(page: Page) {
   await expect(page.locator("#notification > div > p")).toHaveText(
     "Created user. you can now login!"
   );
+
+  return {
+    userFullName: USER_FULL_NAME,
+    userEmail: USER_EMAIL,
+    userPassword: USER_PASSWORD,
+  };
 }
 
-export async function loginUserWrapper(page: Page) {
+export interface UserLoginData {
+  userEmail: string;
+  userPassword: string;
+}
+
+export async function loginUserWrapper(
+  page: Page,
+  loginData: UserLoginData | CreateUserResult
+) {
   await page.goto("http://localhost:3000/");
 
   await page
@@ -40,9 +59,11 @@ export async function loginUserWrapper(page: Page) {
 
   await page
     .getByRole("textbox", { name: "Email address" })
-    .fill(getUserEmail());
+    .fill(loginData.userEmail);
 
-  await page.getByRole("textbox", { name: "Password" }).fill(getUserPassword());
+  await page
+    .getByRole("textbox", { name: "Password" })
+    .fill(loginData.userPassword);
 
   await page.getByRole("button", { name: "Sign in" }).click();
 
