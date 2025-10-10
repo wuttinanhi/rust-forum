@@ -1,0 +1,74 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
+      - name: use npm
+        run: corepack use pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Build and start services (docker compose)
+        run: docker compose -f docker-compose.yml up -d --build
+
+      - name: Wait for app to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:3000/ >/dev/null; then
+              echo "App is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App did not become ready in time" >&2
+          docker compose -f docker-compose.yml ps || true
+          docker compose -f docker-compose.yml logs --no-color | tail -n 200 || true
+          exit 1
+
+      - name: Run Playwright tests
+        run: pnpm exec playwright test
+        # --reporter line
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      # - name: Docker Compose status and logs
+      #   if: ${{ always() }}
+      #   run: |
+      #     mkdir -p artifacts
+      #     docker compose -f docker-compose.yml ps || true
+      #     docker compose -f docker-compose.yml logs --no-color > artifacts/docker-compose.log || true
+
+      # - name: Upload docker compose logs
+      #   if: ${{ always() }}
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: docker-compose-logs
+      #     path: artifacts/docker-compose.log
+      #     retention-days: 7
+
+      - name: Tear down services (docker compose)
+        if: ${{ always() }}
+        run: docker compose -f docker-compose.yml down -v
