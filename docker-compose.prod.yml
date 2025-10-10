@@ -1,0 +1,71 @@
+volumes:
+  prod_db:
+  prod_static:
+  redis_data:
+
+services:
+  rustforum:
+    image: docker.io/wuttinanhi/rustforum:1.0
+    depends_on:
+      - db
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # Database
+      - "DATABASE_URL=postgres://postgres:example@db/postgres"
+      # Redis
+      - "REDIS_HOST=redis"
+      - "REDIS_PASSWORD=redis123"
+      # SMTP
+      - "SMTP_HOST=UPDATE_ME"
+      - "SMTP_EMAIL=UPDATE_ME"
+      - "SMPTP_PASSWORD=UPDATE_ME"
+      # App Setup
+      - "APP_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000"
+      - "APP_DOMAIN_URL=http://localhost:3000"
+      - "COOKIE_KEY=a_very_long_cookie_secret_a_very_long_cookie_secret_a_very_long_cookie_secret"
+      - "STATIC_FILE_DIR=/app/static"
+    ports:
+      - "3000:3000"
+    volumes:
+      - "prod_static:/app/static"
+      # - "./static:/app/static"
+
+  db:
+    image: postgres:17
+    restart: always
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    # or set shared memory limit when deploy via swarm stack
+    #volumes:
+    #  - type: tmpfs
+    #    target: /dev/shm
+    #    tmpfs:
+    #      size: 134217728 # 128*2^20 bytes = 128Mb
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - "5432:5432"
+    volumes:
+      - "prod_db:/var/lib/postgresql/data"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+
+  # redis
+  # redis-cli -u redis://:redis123@redis
+  redis:
+    image: redis:8.2.2-bookworm
+    # command: --appendonly yes --requirepass $${REDIS_PASSWORD}
+    command: --appendonly yes --requirepass redis123
+    environment:
+      - REDIS_PASSWORD=redis123
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+    ports:
+      - "6379:6379"
+    # volumes:
+    #   - "redis_data:/bitnami/redis/data"
