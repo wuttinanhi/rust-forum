@@ -8,7 +8,7 @@ A web forum application built with Rust, leveraging Actix-web framework and Post
 
 - User authentication
 - Forum posts and comments
-- Session management
+- Cookie-based sessions for persistent login
 - Rate limiting
 - CORS
 
@@ -35,7 +35,7 @@ cp .env.example .env
 ./devsetup.sh
 ```
 
-4. Start PostgreSQL and Redis
+4. Start docker compose for dev
 
 ```bash
 docker compose -f "docker-compose.dev.yml" up -d
@@ -50,7 +50,7 @@ diesel migration run
 6. Start development with watch
 
 ```bash
-./watch.sh
+./dev.sh
 ```
 
 ### Production Deployment
@@ -58,10 +58,10 @@ diesel migration run
 1. Build and start all services
 
 ```bash
-docker compose up -d --build
+docker compose -f "docker-compose.prod.yml" up -d --build
 ```
 
-2. Run database migrations
+2. Run database migrations (if needed)
 
 ```bash
 diesel migration run
