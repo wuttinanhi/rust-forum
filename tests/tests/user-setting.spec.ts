@@ -61,7 +61,7 @@ test.describe("Create Post and Comment Test", () => {
     // await page.getByRole("button", { name: "Profile picture" }).click();
     await page
       .getByRole("button", { name: "Profile picture" })
-      .setInputFiles("test.jpg");
+      .setInputFiles("test_assets/profile_picture.png");
 
     await page.getByRole("button", { name: "Upload" }).click();
 
