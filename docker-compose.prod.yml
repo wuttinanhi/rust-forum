@@ -3,14 +3,12 @@ volumes:
   prod_static:
   redis_data:
 
+
 services:
   rustforum:
     image: docker.io/wuttinanhi/rustforum:1.0
     depends_on:
       - db
-    build:
-      context: .
-      dockerfile: Dockerfile
     environment:
       # Database
       - "DATABASE_URL=postgres://postgres:example@db/postgres"
