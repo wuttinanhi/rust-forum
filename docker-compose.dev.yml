@@ -23,12 +23,14 @@ services:
     ports:
       - "8080:8080"
 
+  # redis
+  # test connection command: redis-cli -u redis://:redis123@redis
   redis:
-    image: docker.io/bitnami/redis:7.4
+    image: redis:8.2.2-bookworm
     restart: always
+    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     environment:
       - REDIS_PASSWORD=redis123
-      # - ALLOW_EMPTY_PASSWORD=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
     ports:
       - "6379:6379"

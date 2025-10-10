@@ -6,6 +6,7 @@ volumes:
 services:
   rustforum:
     image: docker.io/wuttinanhi/rustforum:1.0
+    restart: always
     depends_on:
       - db
     build:
@@ -56,12 +57,10 @@ services:
     ports:
       - "8080:8080"
 
-  # redis
-  # redis-cli -u redis://:redis123@redis
   redis:
     image: redis:8.2.2-bookworm
-    # command: --appendonly yes --requirepass $${REDIS_PASSWORD}
-    command: --appendonly yes --requirepass redis123
+    restart: always
+    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     environment:
       - REDIS_PASSWORD=redis123
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
