@@ -5,20 +5,24 @@ volumes:
 
 services:
   rustforum:
-    image: rustforum
+    image: docker.io/wuttinanhi/rustforum:1.0
     depends_on:
       - db
     build:
       context: .
       dockerfile: Dockerfile
     environment:
+      # Database
       - "DATABASE_URL=postgres://postgres:example@db/postgres"
+      # Redis
       - "REDIS_HOST=redis"
       - "REDIS_PASSWORD=redis123"
-      - "APP_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000"
+      # SMTP
       - "SMTP_HOST=UPDATE_ME"
       - "SMTP_EMAIL=UPDATE_ME"
       - "SMPTP_PASSWORD=UPDATE_ME"
+      # App Setup
+      - "APP_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000"
       - "APP_DOMAIN_URL=http://localhost:3000"
       - "COOKIE_KEY=a_very_long_cookie_secret_a_very_long_cookie_secret_a_very_long_cookie_secret"
       - "STATIC_FILE_DIR=/app/static"
@@ -52,8 +56,12 @@ services:
     ports:
       - "8080:8080"
 
+  # redis
+  # redis-cli -u redis://:redis123@redis
   redis:
-    image: docker.io/bitnami/redis:7.4
+    image: redis:8.2.2-bookworm
+    # command: --appendonly yes --requirepass $${REDIS_PASSWORD}
+    command: --appendonly yes --requirepass redis123
     environment:
       - REDIS_PASSWORD=redis123
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL

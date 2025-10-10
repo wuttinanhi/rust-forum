@@ -72,7 +72,8 @@ pub fn create_actix_app(
     let mut ratelimit_redis_url = format!("redis://{ratelimit_redis_host}");
 
     if !ratelimit_redis_password.is_empty() {
-        ratelimit_redis_url = format!("redis://:{ratelimit_redis_password}@{ratelimit_redis_host}");
+        ratelimit_redis_url =
+            format!("redis://default:{ratelimit_redis_password}@{ratelimit_redis_host}");
     }
 
     println!("ratelimit_redis_url: {:?}", &ratelimit_redis_url);

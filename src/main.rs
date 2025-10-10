@@ -100,17 +100,18 @@ async fn main() -> std::io::Result<()> {
     let comment_service = BasedCommentService::new(comment_repo.clone());
     let comment_service = Arc::new(comment_service);
 
-    HttpServer::new(move || {
-        // --- app kit setup ---
-        let app_kit = AppKit {
-            user_service: user_service.clone(),
-            email_service: email_service.clone(),
-            token_service: token_service.clone(),
-            post_service: post_service.clone(),
-            comment_service: comment_service.clone(),
-        };
+    // --- app kit setup ---
+    let app_kit = AppKit {
+        user_service: user_service.clone(),
+        email_service: email_service.clone(),
+        token_service: token_service.clone(),
+        post_service: post_service.clone(),
+        comment_service: comment_service.clone(),
+    };
 
-        create_actix_app(app_kit)
+    HttpServer::new(move || {
+        let app_kit_clone = app_kit.clone();
+        create_actix_app(app_kit_clone)
     })
     .bind((host, port))?
     // .workers(1)
