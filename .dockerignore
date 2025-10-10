@@ -28,3 +28,5 @@ docker-compose.yml
 docker-compose.dev.yml
 test.sh
 template.env
+docker-compose.prod.yml
+docker-compose.*
