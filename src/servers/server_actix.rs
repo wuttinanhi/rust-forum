@@ -80,10 +80,15 @@ pub fn create_actix_app(
     // let ratelimit_redis_url = ratelimit_redis_url.clone();
 
     // -- setup static file directory --
-    let static_file_dir_path =
-        std::env::var("STATIC_FILE_DIR").unwrap_or("/app/static".to_string());
+    let static_file_dir_path = std::env::var("STATIC_FILE_DIR").unwrap_or("".to_string());
+
+    if static_file_dir_path.is_empty() {
+        panic!("env STATIC_FILE_DIR is not set!");
+    }
+
     // Create static directory if not exists
     std::fs::create_dir_all(&static_file_dir_path).expect("Failed to create static directory");
+    println!("create STATIC_FILE_DIR at {:?}", &static_file_dir_path);
 
     // --- handlebars setup ---
     let mut handlebars = Handlebars::new();
