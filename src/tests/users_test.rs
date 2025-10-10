@@ -21,11 +21,12 @@ mod tests {
         let req = actix_web::test::TestRequest::get().uri("/").to_request();
         let resp = actix_web::test::call_service(&app, req).await;
 
-        // dbg!(&resp.status());
+        assert_eq!(resp.status(), StatusCode::OK);
 
-        // assert_eq!(true, true);
+        // let body: serde_json::Value = actix_web::test::read_body_json(resp).await;
 
-        assert_eq!(resp.status(), StatusCode::OK)
+        // let body = actix_web::test::read_body(resp).await;
+        // dbg!(&body);
     }
 
     #[actix_web::test]
