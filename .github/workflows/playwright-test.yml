@@ -17,9 +17,14 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: use npm
-        run: corepack use pnpm
-        working-directory: tests
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Verify pnpm
+        run: pnpm -v
 
       - name: Install dependencies
         run: pnpm install
