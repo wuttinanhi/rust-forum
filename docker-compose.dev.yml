@@ -1,6 +1,10 @@
+volumes:
+  rust_forum_dev_db:
+  rust_forum_dev_redis:
+
 services:
   db:
-    image: postgres
+    image: postgres:18-bookworm
     restart: always
     # set shared memory limit when using docker-compose
     shm_size: 128mb
@@ -11,11 +15,12 @@ services:
     #    tmpfs:
     #      size: 134217728 # 128*2^20 bytes = 128Mb
     environment:
+      # PGDATA: /var/lib/postgresql/18/docker
       POSTGRES_PASSWORD: example
     ports:
       - "5432:5432"
     volumes:
-      - db:/var/lib/postgresql/data
+      - rust_forum_dev_db:/var/lib/postgresql
 
   adminer:
     image: adminer
@@ -34,8 +39,5 @@ services:
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
     ports:
       - "6379:6379"
-    # volumes:
-    #   - "redis_data:/bitnami/redis/data"
-
-volumes:
-  db:
+    volumes:
+      - "rust_forum_dev_redis:/data"
