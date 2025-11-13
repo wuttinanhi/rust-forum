@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
+    use crate::tests::debug_response_data;
     use crate::{
         entities::user::{UserLoginFormData, UserRegisterFormData},
         servers::server_actix::create_actix_app,
-        AppKit,
+        tests, AppKit,
     };
     use actix_web::http::StatusCode;
     use dotenv::dotenv;
@@ -12,7 +13,7 @@ mod tests {
     async fn test_should_get_users_register_route() {
         dotenv().ok();
 
-        let app_kit = AppKit::new();
+        let app_kit = AppKit::new_for_testing();
 
         let actix_app = create_actix_app(app_kit);
 
@@ -33,7 +34,7 @@ mod tests {
     async fn test_should_able_to_register_user() {
         dotenv().ok();
 
-        let app_kit = AppKit::new();
+        let app_kit = AppKit::new_for_testing();
 
         let actix_app = create_actix_app(app_kit.clone());
 
@@ -41,8 +42,9 @@ mod tests {
 
         let user_register_form_data = UserRegisterFormData {
             email: "adam@example.com".to_string(),
-            name: "adam rustforum".to_string(),
+            name: "adam example".to_string(),
             password: "adampassword".to_string(),
+            cf_turnstile_response: None,
         };
 
         let req = actix_web::test::TestRequest::post()
@@ -52,23 +54,18 @@ mod tests {
 
         let resp = actix_web::test::call_service(&app, req).await;
 
-        dbg!(resp.response().status());
-
         let get_user_by_email = app_kit.user_service.get_user_by_email("adam@example.com");
+
+        dbg!(&get_user_by_email);
 
         let user = get_user_by_email.unwrap();
         assert_eq!(user.email, "adam@example.com");
-        assert_eq!(user.name, "adam rustforum");
+        assert_eq!(user.name, "adam example");
         assert_eq!(user.role, "user");
 
-        // dbg!(resp.response().headers());
-        // dbg!(resp.response().body());
+        assert_eq!(resp.status(), StatusCode::FOUND);
 
-        // let body = actix_web::test::read_body(resp).await;
-        // let html = String::from_utf8(body.to_vec()).unwrap();
-        // println!("Response body: {}", html);
-
-        // assert_eq!(resp.status(), StatusCode::OK)
+        tests::debug_response_data(resp).await;
     }
 
     #[actix_web::test]
@@ -77,7 +74,7 @@ mod tests {
 
         env_logger::init();
 
-        let app_kit = AppKit::new();
+        let app_kit = AppKit::new_for_testing();
 
         let actix_app = create_actix_app(app_kit.clone());
 
@@ -87,6 +84,7 @@ mod tests {
             email: "adam@example.com".to_string(),
             name: "adam rustforum".to_string(),
             password: "adampassword".to_string(),
+            cf_turnstile_response: None,
         };
 
         let register_req = actix_web::test::TestRequest::post()
@@ -101,6 +99,7 @@ mod tests {
         let user_login_form = UserLoginFormData {
             email: "adam@example.com".to_string(),
             password: "adampassword".to_string(),
+            cf_turnstile_response: None,
         };
 
         let login_req = actix_web::test::TestRequest::post()
@@ -112,6 +111,6 @@ mod tests {
 
         assert_eq!(login_resp.response().status(), StatusCode::FOUND);
 
-        dbg!(login_resp.headers());
+        debug_response_data(login_resp).await;
     }
 }
