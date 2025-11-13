@@ -55,40 +55,11 @@ pub fn create_actix_app(
         InitError = (),
     >,
 > {
+    let cors_origins = app_kit.cors_origins.clone();
+    let redis_ratelimit_url = app_kit.redis_ratelimit_url.clone();
+    let static_file_dir_path = app_kit.static_file_dir_path.clone();
+
     let app_kit_web_data = web::Data::new(app_kit);
-
-    // Setup CORS
-    let cors_origins = std::env::var("APP_CORS_ORIGINS")
-        .unwrap_or("http://localhost:3000,http://127.0.0.1:3000".to_string());
-
-    println!("APP_CORS_ORIGINS: {:?}", &cors_origins);
-
-    let cors_origins_split: Vec<String> = cors_origins.split(',').map(|s| s.to_string()).collect();
-    let cors_origins_split = cors_origins_split.clone();
-
-    // Setup Rate Limit
-    let ratelimit_redis_host = std::env::var("REDIS_HOST").unwrap_or("127.0.0.1".to_string());
-    let ratelimit_redis_password = std::env::var("REDIS_PASSWORD").unwrap_or("".to_string());
-    let mut ratelimit_redis_url = format!("redis://{ratelimit_redis_host}");
-
-    if !ratelimit_redis_password.is_empty() {
-        ratelimit_redis_url =
-            format!("redis://default:{ratelimit_redis_password}@{ratelimit_redis_host}");
-    }
-
-    println!("ratelimit_redis_url: {:?}", &ratelimit_redis_url);
-    // let ratelimit_redis_url = ratelimit_redis_url.clone();
-
-    // -- setup static file directory --
-    let static_file_dir_path = std::env::var("STATIC_FILE_DIR").unwrap_or("".to_string());
-
-    if static_file_dir_path.is_empty() {
-        panic!("env STATIC_FILE_DIR is not set!");
-    }
-
-    // Create static directory if not exists
-    std::fs::create_dir_all(&static_file_dir_path).expect("Failed to create static directory");
-    println!("create STATIC_FILE_DIR at {:?}", &static_file_dir_path);
 
     // --- handlebars setup ---
     let mut handlebars = Handlebars::new();
@@ -141,7 +112,7 @@ pub fn create_actix_app(
     // -- setup CORS ---
     let cors_middleware = Cors::default()
         .allowed_origin_fn(move |origin, _req_head| {
-            cors_origins_split
+            cors_origins
                 .iter()
                 .any(|allowed_origin| allowed_origin == origin)
         })
@@ -155,7 +126,7 @@ pub fn create_actix_app(
 
     // -- setup rate limiter --
     let limiter = web::Data::new(
-        Limiter::builder(ratelimit_redis_url)
+        Limiter::builder(redis_ratelimit_url)
             .key_by(|req: &ServiceRequest| {
                 let conn_info = req.connection_info();
 

@@ -47,6 +47,10 @@ pub struct AppKit {
     pub user_service: Arc<dyn UserService>,
     pub post_service: Arc<dyn PostService>,
     pub comment_service: Arc<dyn CommentService>,
+
+    pub cors_origins: Vec<String>,
+    pub redis_ratelimit_url: String,
+    pub static_file_dir_path: String,
 }
 
 impl Default for AppKit {
@@ -93,6 +97,9 @@ impl AppKit {
             token_service: Arc::new(token_service),
             post_service: Arc::new(post_service),
             comment_service: Arc::new(comment_service),
+            cors_origins: vec![],
+            redis_ratelimit_url: "".to_string(),
+            static_file_dir_path: "./static".to_string(),
         }
     }
 }

@@ -100,6 +100,35 @@ async fn main() -> std::io::Result<()> {
     let comment_service = BasedCommentService::new(comment_repo.clone());
     let comment_service = Arc::new(comment_service);
 
+    // Setup CORS
+    let cors_origins_env = std::env::var("APP_CORS_ORIGINS")
+        .unwrap_or("http://localhost:3000,http://127.0.0.1:3000".to_string());
+
+    println!("APP_CORS_ORIGINS: {:?}", &cors_origins_env);
+
+    let cors_origins_vec: Vec<String> =
+        cors_origins_env.split(',').map(|s| s.to_string()).collect();
+
+    // Setup Redis Rate Limit
+    let ratelimit_redis_host = std::env::var("REDIS_HOST").unwrap_or("127.0.0.1".to_string());
+    let ratelimit_redis_password = std::env::var("REDIS_PASSWORD").unwrap_or("".to_string());
+    let redis_ratelimit_url = if ratelimit_redis_password.is_empty() {
+        format!("redis://{ratelimit_redis_host}")
+    } else {
+        format!("redis://default:{ratelimit_redis_password}@{ratelimit_redis_host}")
+    };
+
+    println!("ratelimit_redis_url: {:?}", &redis_ratelimit_url);
+
+    // -- setup static file directory --
+    let static_file_dir_path = std::env::var("STATIC_FILE_DIR").unwrap_or("".to_string());
+    if static_file_dir_path.is_empty() {
+        panic!("env STATIC_FILE_DIR is not set!");
+    }
+    // Create static directory if not exists
+    std::fs::create_dir_all(&static_file_dir_path).expect("Failed to create static directory");
+    println!("create STATIC_FILE_DIR at {:?}", &static_file_dir_path);
+
     // --- app kit setup ---
     let app_kit = AppKit {
         user_service: user_service.clone(),
@@ -107,6 +136,9 @@ async fn main() -> std::io::Result<()> {
         token_service: token_service.clone(),
         post_service: post_service.clone(),
         comment_service: comment_service.clone(),
+        cors_origins: cors_origins_vec,
+        redis_ratelimit_url,
+        static_file_dir_path,
     };
 
     HttpServer::new(move || {
