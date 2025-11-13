@@ -8,16 +8,15 @@ use futures::future::{ready, Ready};
 use handlebars::Handlebars;
 use serde_json::json;
 
+use crate::handlebars_helper::pagination::{
+    build_handlebars_pagination_result, HandlebarsPaginationResult,
+};
 use crate::{
     db::WebError,
     entities::{comment::CommentPublic, post::PostPublic},
     utils::{
-        flash::handle_flash_message,
-        handlebars_helper::update_handlebars_data,
-        pagination::{
-            build_handlebars_pagination_result, HandlebarsPaginationResult, QueryPagination,
-        },
-        session::handlebars_add_user,
+        flash::handle_flash_message, handlebars_helper::update_handlebars_data,
+        pagination::QueryPagination, session::handlebars_add_user,
     },
     AppKit,
 };

@@ -8,6 +8,7 @@ use actix_web::{
 use handlebars::Handlebars;
 use serde_json::json;
 
+use crate::handlebars_helper::pagination::build_handlebars_pagination_result;
 use crate::{
     db::WebError,
     entities::{
@@ -18,7 +19,7 @@ use crate::{
         flash::{handle_flash_message, set_flash_message, FLASH_ERROR, FLASH_SUCCESS},
         handlebars_helper::update_handlebars_data,
         http::{create_redirect, redirect_back},
-        pagination::{build_handlebars_pagination_result, QueryPagination},
+        pagination::QueryPagination,
         session::handlebars_add_user,
         users::get_session_user,
     },

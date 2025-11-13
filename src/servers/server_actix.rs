@@ -33,9 +33,9 @@ use crate::controllers::user_controller::{
     users_register_route,
 };
 
+use crate::handlebars_helper::pagination::handlebars_pagination_helper;
 use crate::servers::actix_etc::actix_fallback_error_handler::actix_fallback_error_handler;
 use crate::servers::actix_etc::actix_multipart_error_handler::actix_multipart_error_handler;
-use crate::utils::pagination::handlebars_pagination_helper;
 use crate::AppKit;
 
 use actix_files as fs;

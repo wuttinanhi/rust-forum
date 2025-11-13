@@ -12,6 +12,7 @@ pub mod utils;
 
 pub mod servers;
 
+pub mod handlebars_helper;
 pub mod tests;
 
 use db::initialize_db_pool;
