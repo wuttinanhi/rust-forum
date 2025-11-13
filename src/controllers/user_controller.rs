@@ -35,17 +35,18 @@ pub async fn users_login_route(
 ) -> actix_web::Result<impl Responder> {
     if get_session_user(&session).is_ok() {
         set_flash_message(&session, "error", "User already logged in!")?;
-
         return Ok(create_redirect("/"));
     }
 
-    let mut data = json!({
+    let mut hb_data = json!({
         "parent": "base"
     });
 
-    update_handlebars_data(&mut data, "title", json!("Login"));
-    handle_flash_message(&mut data, &session);
-    let body = hb.render("users/login", &data).unwrap();
+    update_handlebars_data(&mut hb_data, "title", json!("Login"));
+    handle_flash_message(&mut hb_data, &session);
+    let body = hb.render("users/login", &hb_data).unwrap();
+
+    // dbg!(&hb_data);
 
     Ok(HttpResponse::Ok().body(body))
 }
@@ -56,7 +57,32 @@ pub async fn users_login_post_route(
     form: actix_web_validator::Form<UserLoginFormData>,
     session: Session,
     hb: web::Data<Handlebars<'_>>,
+    req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
+    let mut data = json!({
+        "parent": "base",
+    });
+
+    // get what client send
+    // dbg!(&form);
+
+    // let cf_turnstile_response = form
+    //     .cf_turnstile_response
+    //     .to_owned()
+    //     .unwrap_or("".to_string());
+    // let turnstile_result =
+    //     crate::utils::turnstile::validate_turnstile_wrapper(&cf_turnstile_response).await;
+    // if let Err(turnstile_error) = turnstile_result {
+    //     crate::utils::flash::set_flash_message(
+    //         &session,
+    //         crate::utils::flash::FLASH_ERROR,
+    //         &turnstile_error.message,
+    //     )?;
+    //     return Ok(crate::utils::http::redirect_back(&req));
+    // }
+
+    crate::validate_turnstile_field!(form, session, req);
+
     let login_result =
         web::block(move || app_kit.user_service.login_user(&form.email, &form.password))
             .await
@@ -69,20 +95,16 @@ pub async fn users_login_post_route(
             // set session user value
             session.insert(SESSION_KEY_USER, user_public)?;
 
-            Ok(create_redirect("/"))
+            return Ok(create_redirect("/"));
         }
 
         Err(_) => {
-            let data = json!({
-                "parent": "base",
-                "error": "Invalid login"
-            });
-
-            let body = hb.render("users/login", &data).unwrap();
-
-            Ok(HttpResponse::Ok().body(body))
+            update_handlebars_data(&mut data, "error", json!("Invalid login"));
         }
     }
+
+    let body = hb.render("users/login", &data).unwrap();
+    Ok(HttpResponse::Ok().body(body))
 }
 
 #[get("/register")]
@@ -114,10 +136,13 @@ pub async fn users_register_post_route(
     form: actix_web_validator::Form<UserRegisterFormData>,
     session: Session,
     hb: web::Data<Handlebars<'_>>,
+    req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let mut hb_data = json!({
         "parent": "base",
     });
+
+    crate::validate_turnstile_field!(form, session, req);
 
     let create_user_result = web::block(move || {
         app_kit
@@ -399,6 +424,8 @@ pub async fn users_resetpassword_post_route(
     session: Session,
     req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
+    crate::validate_turnstile_field!(form, session, req);
+    
     let _ = web::block(move || {
         // let mut conn = pool.get()?;
 

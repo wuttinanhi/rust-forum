@@ -1,0 +1,12 @@
+<!--TURNSTILE START-->
+
+{{#if turnstile}}
+    <div class="my-3">
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        <div class="cf-turnstile" data-sitekey="{{turnstile.turnstile_site_key}}"></div>
+    </div>
+{{else}}
+    <input type="hidden" name="cf-turnstile-response" value="CLOUDFLARE_TURNSTILE_NOT_ENABLED">
+{{/if}}
+
+<!--TURNSTILE END-->

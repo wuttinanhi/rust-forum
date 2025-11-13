@@ -29,6 +29,13 @@ pub struct UserLoginFormData {
         message = "Password must be at least 8 characters and max 100 long"
     ))]
     pub password: String,
+
+    #[validate(length(
+        min = 1,
+        message = "cf-turnstile-response must not be empty if provided"
+    ))]
+    #[serde(rename = "cf-turnstile-response")]
+    pub cf_turnstile_response: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Validate)]
@@ -48,6 +55,13 @@ pub struct UserRegisterFormData {
         message = "Password must be at least 8 characters and max 100 long"
     ))]
     pub password: String,
+
+    #[validate(length(
+        min = 1,
+        message = "cf-turnstile-response must not be empty if provided"
+    ))]
+    #[serde(rename = "cf-turnstile-response")]
+    pub cf_turnstile_response: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Validate)]
@@ -91,6 +105,13 @@ pub struct UserUploadProfilePictureForm {
 pub struct UserPasswordResetRequest {
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
+
+    #[validate(length(
+        min = 1,
+        message = "cf-turnstile-response must not be empty if provided"
+    ))]
+    #[serde(rename = "cf-turnstile-response")]
+    pub cf_turnstile_response: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Validate)]

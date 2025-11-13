@@ -38,11 +38,12 @@ use crate::servers::actix_etc::actix_fallback_error_handler::actix_fallback_erro
 use crate::servers::actix_etc::actix_multipart_error_handler::actix_multipart_error_handler;
 use crate::AppKit;
 
+use crate::handlebars_helper::turnstile::handlebars_turnstile_helper;
 use actix_files as fs;
 use actix_web::middleware::TrailingSlash;
 use actix_web::middleware::{ErrorHandlers, NormalizePath};
 
-type NestedBody = EitherBody<EitherBody<EitherBody<BoxBody, BoxBody>, BoxBody>, BoxBody>;
+pub type NestedBody = EitherBody<EitherBody<EitherBody<BoxBody, BoxBody>, BoxBody>, BoxBody>;
 
 pub fn create_actix_app(
     app_kit: AppKit,
@@ -64,8 +65,11 @@ pub fn create_actix_app(
     // --- handlebars setup ---
     let mut handlebars = Handlebars::new();
 
-    // register handlebars pagination helper
+    // --- register handlebars helper ---
+    // pagination helper
     handlebars.register_helper("pagination", Box::new(handlebars_pagination_helper));
+    // turnstile helper
+    handlebars.register_helper("turnstile", Box::new(handlebars_turnstile_helper));
 
     // set handlebars options
     let mut handlebars_options = DirectorySourceOptions::default();
