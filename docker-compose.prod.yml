@@ -1,8 +1,7 @@
 volumes:
-  prod_db:
-  prod_static:
-  redis_data:
-
+  rust_forum_production_db:
+  rust_forum_production_redis:
+  rust_forum_production_static:
 
 services:
   rustforum:
@@ -28,11 +27,12 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - "prod_static:/app/static"
+      - "rust_forum_production_static:/app/static"
+      # FOR DEBUG
       # - "./static:/app/static"
 
   db:
-    image: postgres:17
+    image: postgres:18-bookworm
     restart: always
     # set shared memory limit when using docker-compose
     shm_size: 128mb
@@ -47,7 +47,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - "prod_db:/var/lib/postgresql/data"
+      - rust_forum_production_db:/var/lib/postgresql
 
   adminer:
     image: adminer
@@ -64,5 +64,5 @@ services:
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
     ports:
       - "6379:6379"
-    # volumes:
-    #   - "redis_data:/bitnami/redis/data"
+    volumes:
+      - "rust_forum_production_redis:/data"

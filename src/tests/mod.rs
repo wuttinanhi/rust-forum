@@ -2,7 +2,7 @@ use actix_web::dev::ServiceResponse;
 
 mod users_test;
 
-async fn debug_response_data(resp: ServiceResponse<crate::servers::server_actix::NestedBody>) {
+pub async fn debug_response_data(resp: ServiceResponse<crate::servers::server_actix::NestedBody>) {
     dbg!((&resp).response().status());
 
     dbg!(&resp.headers());
