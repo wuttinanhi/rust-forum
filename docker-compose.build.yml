@@ -1,0 +1,12 @@
+volumes:
+  rust_forum_production_db:
+  rust_forum_production_redis:
+  rust_forum_production_static:
+
+services:
+  rustforum:
+    image: docker.io/wuttinanhi/rustforum:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      
