@@ -5,7 +5,7 @@ volumes:
 
 services:
   rustforum:
-    image: docker.io/wuttinanhi/rustforum:1.0
+    image: docker.io/wuttinanhi/rustforum:latest
     restart: always
     depends_on:
       - db
