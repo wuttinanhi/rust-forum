@@ -1,17 +1,14 @@
 volumes:
-  prod_db:
-  prod_static:
-  redis_data:
+  rust_forum_production_db:
+  rust_forum_production_redis:
+  rust_forum_production_static:
 
 services:
   rustforum:
-    image: docker.io/wuttinanhi/rustforum:1.0
+    image: docker.io/wuttinanhi/rustforum:latest
     restart: always
     depends_on:
       - db
-    build:
-      context: .
-      dockerfile: Dockerfile
     environment:
       # Database
       - "DATABASE_URL=postgres://postgres:example@db/postgres"
@@ -30,11 +27,23 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - "prod_static:/app/static"
+      - "rust_forum_production_static:/app/static"
+      # FOR DEBUG
       # - "./static:/app/static"
+    cpu_shares: 512
+    deploy:
+      resources:
+        # Maximum
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        # Minimum
+        reservations:
+          memory: 256M
+          cpus: "0.5"
 
   db:
-    image: postgres:17
+    image: postgres:18.1
     restart: always
     # set shared memory limit when using docker-compose
     shm_size: 128mb
@@ -49,13 +58,35 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - "prod_db:/var/lib/postgresql/data"
+      - rust_forum_production_db:/var/lib/postgresql
+    cpu_shares: 1024
+    deploy:
+      resources:
+        # Maximum
+        limits:
+          memory: 1024M
+          cpus: "1.0"
+        # Minimum
+        reservations:
+          memory: 512M
+          cpus: "0.5"
 
   adminer:
     image: adminer
     restart: always
     ports:
       - "8080:8080"
+    cpu_shares: 512
+    deploy:
+      resources:
+        # Maximum
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        # Minimum
+        reservations:
+          memory: 256M
+          cpus: "0.5"
 
   redis:
     image: redis:8.2.2-bookworm
@@ -66,5 +97,16 @@ services:
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
     ports:
       - "6379:6379"
-    # volumes:
-    #   - "redis_data:/bitnami/redis/data"
+    volumes:
+      - "rust_forum_production_redis:/data"
+    cpu_shares: 512
+    deploy:
+      resources:
+        # Maximum
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        # Minimum
+        reservations:
+          memory: 256M
+          cpus: "0.5"

@@ -4,7 +4,7 @@ volumes:
 
 services:
   db:
-    image: postgres:18-bookworm
+    image: postgres:18.1
     restart: always
     # set shared memory limit when using docker-compose
     shm_size: 128mb
