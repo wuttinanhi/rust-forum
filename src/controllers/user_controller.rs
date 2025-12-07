@@ -185,7 +185,12 @@ pub async fn users_settings_route(
     hb: web::Data<Handlebars<'_>>,
     session: Session,
 ) -> actix_web::Result<impl Responder> {
-    let session_user = get_session_user(&session)?;
+    let session_user = get_session_user(&session).map_err(|e| {
+        dbg!("get session user err", &e);
+        e
+    })?;
+
+    dbg!(&session_user);
 
     let mut hb_data = json!({
         "title": "User settings",
@@ -204,7 +209,14 @@ pub async fn users_settings_route(
     match user_public_result {
         Ok(user) => update_handlebars_data(&mut hb_data, "user", json!(user)),
 
-        Err(why) => set_flash_message(&session, FLASH_ERROR, &why.to_string())?,
+        Err(why) => {
+            dbg!(&why);
+
+            // set_flash_message(&session, FLASH_ERROR, &why.to_string())?
+            session.clear();
+
+            return Ok(create_redirect("/"));
+        }
     }
 
     handle_flash_message(&mut hb_data, &session);
@@ -425,7 +437,7 @@ pub async fn users_resetpassword_post_route(
     req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     crate::validate_turnstile_field!(form, session, req);
-    
+
     let _ = web::block(move || {
         // let mut conn = pool.get()?;
 

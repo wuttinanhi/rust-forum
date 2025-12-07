@@ -1,10 +1,11 @@
 use actix_cors::Cors;
 use actix_limitation::{Limiter, RateLimiter};
 use actix_multipart::form::MultipartFormConfig;
+use actix_session::SessionExt;
 use actix_session::config::PersistentSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::body::{BoxBody, EitherBody};
-use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
+use actix_web::dev::{Service, ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::http;
 use actix_web::{
     cookie::Key,
@@ -195,6 +196,37 @@ pub fn create_actix_app(
         .app_data(handlebars_ref.clone())
         // limiter
         .wrap(RateLimiter::default())
+        // TEST MIDDLEWARE
+        // .wrap_fn(|req, srv| {
+        //         let session = req.get_session();
+
+        //         dbg!(&session.entries());
+
+        //         let fut = srv.call(req);
+
+        //         async {
+        //             let res = fut.await.map_err(|e| {
+        //                 dbg!(&e);
+
+        //                 e
+        //             })?;
+ 
+        //             Ok(res)
+        //         }
+        //     })
+        //     // ==================
+        // .wrap_fn(|req, srv| {
+        //         let fut = srv.call(req);
+        //         async {
+        //             let mut res = fut.await?;
+        //             // Set header globally for all routes
+        //             res.headers_mut().insert(
+        //                 http::header::CONTENT_TYPE,
+        //                 http::header::HeaderValue::from_static("text/html"),
+        //             );
+        //             Ok(res)
+        //         }
+        //     })
         .app_data(limiter.clone())
         // path fix
         .wrap(NormalizePath::new(TrailingSlash::Trim))
