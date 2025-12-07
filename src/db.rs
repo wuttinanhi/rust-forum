@@ -1,4 +1,5 @@
 use diesel::{
+    connection::SimpleConnection,
     pg::Pg,
     prelude::*,
     r2d2,
@@ -10,6 +11,15 @@ use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 pub type DbPool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
 
 pub type WebError = Box<dyn std::error::Error + Send + Sync>;
+
+pub const MIGRATIONS: diesel_migrations::EmbeddedMigrations =
+    diesel_migrations::embed_migrations!("./migrations/");
+
+pub fn establish_connection() -> PgConnection {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    PgConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+}
 
 pub fn initialize_db_pool() -> DbPool {
     let conn_spec = std::env::var("DATABASE_URL").expect("DATABASE_URL should be set");
@@ -47,4 +57,23 @@ pub fn run_migrations(
     connection.run_pending_migrations(migrations)?;
 
     Ok(())
+}
+
+pub fn reset_db(conn: &mut PgConnection) {
+    // This command finds all tables in the current schema and truncates them.
+    // 'CASCADE' ensures foreign key constraints don't stop the deletion.
+    let sql = r#"
+DO $$ 
+DECLARE 
+    r RECORD; 
+BEGIN 
+    -- 1. Loop through all tables in the public schema
+    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP 
+        -- 2. Drop the table using CASCADE to bypass foreign key constraints
+        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE'; 
+    END LOOP; 
+END $$;
+    "#;
+
+    conn.batch_execute(sql).expect("Failed to truncate tables");
 }

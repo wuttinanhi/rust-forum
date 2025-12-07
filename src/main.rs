@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use actix_web::HttpServer;
 
-use rust_forum::db::{initialize_db_pool, run_migrations};
+use rust_forum::db::{MIGRATIONS, establish_connection, initialize_db_pool, run_migrations};
 use rust_forum::repositories::comment_repository::PostgresCommentRepository;
 use rust_forum::repositories::post_repository::PostgresPostRepository;
 use rust_forum::repositories::token_repository::PostgresTokenRepository;
@@ -13,12 +13,10 @@ use rust_forum::services::email_service::BasedEmailService;
 use rust_forum::services::post_service::BasedPostService;
 use rust_forum::services::token_service::BasedTokenService;
 use rust_forum::services::user_service::BasedUserService;
-use rust_forum::{establish_connection, AppKit};
+use rust_forum::{AppKit};
 
 use dotenv::dotenv;
 
-pub const MIGRATIONS: diesel_migrations::EmbeddedMigrations =
-    diesel_migrations::embed_migrations!("./migrations/");
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

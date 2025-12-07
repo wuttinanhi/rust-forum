@@ -16,6 +16,7 @@ WORKDIR /app
 
 COPY --from=build-env /usr/lib/x86_64-linux-gnu/lib* /usr/lib/x86_64-linux-gnu/
 COPY --from=build-env /app/target/release/rustforum /app/rustforum
+COPY --from=build-env /app/target/release/reset_db /app/reset_db
 COPY --from=build-env /app/templates /app/templates
 
 # VOLUME [ "/app/static" ]

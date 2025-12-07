@@ -18,7 +18,6 @@ pub mod macros;
 pub mod tests;
 
 use db::initialize_db_pool;
-use diesel::{Connection, PgConnection};
 
 use repositories::{
     comment_repository::PostgresCommentRepository, post_repository::PostgresPostRepository,
@@ -33,11 +32,6 @@ use services::{
 };
 use std::sync::Arc;
 
-pub fn establish_connection() -> PgConnection {
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
-}
 
 #[derive(Clone)]
 pub struct AppKit {
@@ -59,8 +53,10 @@ pub struct AppKit {
 impl AppKit {
     pub fn new_for_testing() -> Self {
         // clear turnstile settings
-        std::env::remove_var("CLOUDFLARE_TURNSTILE_SECRET_KEY");
-        std::env::remove_var("CLOUDFLARE_TURNSTILE_SITE_KEY");
+        unsafe {
+            std::env::remove_var("CLOUDFLARE_TURNSTILE_SECRET_KEY");
+            std::env::remove_var("CLOUDFLARE_TURNSTILE_SITE_KEY");
+        }
 
         // --- database setup ---
         let db_pool = initialize_db_pool();
