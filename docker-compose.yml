@@ -3,6 +3,7 @@ volumes:
   rust_forum_production_redis:
   rust_forum_production_static:
 
+
 services:
   rustforum:
     image: docker.io/wuttinanhi/rustforum:latest
@@ -24,6 +25,7 @@ services:
       - "APP_DOMAIN_URL=http://localhost:3000"
       - "COOKIE_KEY=a_very_long_cookie_secret_a_very_long_cookie_secret_a_very_long_cookie_secret"
       - "STATIC_FILE_DIR=/app/static"
+      - "APP_WORKER_COUNT=10"
     ports:
       - "3000:3000"
     volumes:

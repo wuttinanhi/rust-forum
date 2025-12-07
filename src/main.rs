@@ -41,6 +41,13 @@ async fn main() -> std::io::Result<()> {
 
     println!("listening at http://{}:{}", host, port);
 
+    let worker_count = std::env::var("APP_WORKER_COUNT")
+        .unwrap_or("10".to_string())
+        .parse()
+        .expect("failed to parse APP_WORKER_COUNT");
+
+    println!("APP_WORKER_COUNT={}", worker_count);
+
     // --- Create static directory if not exists ---
     std::fs::create_dir_all("./static").expect("Failed to create static directory");
 
@@ -146,7 +153,7 @@ async fn main() -> std::io::Result<()> {
         create_actix_app(app_kit_clone)
     })
     .bind((host, port))?
-    // .workers(1)
+    .workers(worker_count)
     .run()
     .await
 }
