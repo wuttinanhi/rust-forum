@@ -80,6 +80,7 @@ async fn validate_turnstile(
     Ok(validation_result)
 }
 
+
 pub async fn validate_turnstile_wrapper(response_token: &str) -> Result<bool, TurnstileError> {
     let turnstile_secret_key = std::env::var("CLOUDFLARE_TURNSTILE_SITE_KEY");
 
@@ -87,8 +88,12 @@ pub async fn validate_turnstile_wrapper(response_token: &str) -> Result<bool, Tu
         if !response_token.is_empty() {
             let result = validate_turnstile(&turnstile_secret_key, response_token, None)
                 .await
-                .map_err(|e| TurnstileError {
-                    message: format!("Failed to validate Turnstile token: {}", e),
+                .map_err(|e| {
+                    dbg!(&e);
+
+                    TurnstileError {
+                        message: format!("Failed to validate Turnstile token: {}", e),
+                    }
                 })?;
 
             Ok(result.success)
