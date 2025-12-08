@@ -10,6 +10,8 @@ RUN cargo build --release --bins
 # FROM gcr.io/distroless/cc-debian12
 FROM debian:12-slim
 
+RUN apt update && apt install -y ca-certificates
+
 WORKDIR /app
 
 # COPY --from=build-env /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
