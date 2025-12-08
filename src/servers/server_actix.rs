@@ -1,11 +1,10 @@
 use actix_cors::Cors;
 use actix_limitation::{Limiter, RateLimiter};
 use actix_multipart::form::MultipartFormConfig;
-use actix_session::SessionExt;
 use actix_session::config::PersistentSession;
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::body::{BoxBody, EitherBody};
-use actix_web::dev::{Service, ServiceFactory, ServiceRequest, ServiceResponse};
+use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::http;
 use actix_web::{
     cookie::Key,
