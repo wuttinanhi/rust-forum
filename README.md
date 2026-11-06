@@ -2,7 +2,7 @@
 
 A web forum application built with Rust, leveraging Actix-web framework and PostgreSQL.
 
-![screenshot](images/4.png)
+![screenshot](readme-images/4.png)
 
 ## Features
 
@@ -11,6 +11,14 @@ A web forum application built with Rust, leveraging Actix-web framework and Post
 - Cookie-based sessions for persistent login
 - Rate limiting
 - CORS
+
+## Demo
+
+| Name | Email | Password | Role |
+| --- | --- | --- | --- |
+| Alice Johnson | `alice@example.com` | `password123` | user |
+| Bob Smith | `bob@example.com` | `password123` | user |
+| Charlie Brown | `charlie@example.com` | `password123` | user |
 
 ## Getting Started
 
