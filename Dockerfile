@@ -1,4 +1,4 @@
-FROM rust:1.88.0-bookworm AS build-env
+FROM rust:1.95-bookworm AS build-env
 
 RUN apt install -y libpq-dev
 
